@@ -95,7 +95,7 @@ export default function EventDetailScreen({ route, navigation }) {
 }
 
 const makeStyles = (c, t) => ({
-  screen: { flex: 1, backgroundColor: c.base },
+  screen: { flex: 1, backgroundColor: 'transparent' },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl * 2 },
   tags: { flexDirection: 'row', gap: spacing.sm },
   title: { ...t.display, fontSize: 25, lineHeight: 31, marginTop: spacing.md },

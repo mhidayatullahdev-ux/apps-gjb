@@ -33,11 +33,11 @@ export function HeroCard({ item, onPress, ctaLabel }) {
           <Tag label={item.heroBadge || item.type || 'INFO'} tone="primary" />
           {item.date ? <Tag label={item.date} tone="neutral" /> : null}
         </View>
-        <Text style={s.heroTitle} numberOfLines={3}>
+        <Text style={s.heroTitle} numberOfLines={2}>
           {item.title}
         </Text>
         {excerpt ? (
-          <Text style={s.heroExcerpt} numberOfLines={3}>
+          <Text style={s.heroExcerpt} numberOfLines={1}>
             {excerpt}
           </Text>
         ) : null}
@@ -125,17 +125,23 @@ export function NewsCard({ item, onPress, compact = false, readLabel }) {
   return (
     <PressableScale onPress={onPress} style={[s.news, compact && s.newsCompact]} scaleTo={0.975}>
       <View style={s.newsAccent} />
+
+      {item.image ? (
+        <SmartImage
+          uri={item.image}
+          style={s.newsThumb}
+          icon="newspaper-outline"
+          showLoader={false}
+        />
+      ) : null}
+
       <View style={s.newsBody}>
         <View style={s.newsTop}>
           <Tag label={item.category} tone="primary" />
           <Text style={s.newsDate}>{item.date}</Text>
         </View>
-        <Text style={s.newsTitle} numberOfLines={compact ? 2 : 3}>
-          {item.title}
-        </Text>
-        <Text style={s.newsExcerpt} numberOfLines={compact ? 2 : 3}>
-          {cleanText(item.excerpt)}
-        </Text>
+        <Text style={s.newsTitle} numberOfLines={compact ? 2 : 3}>{item.title}</Text>
+        <Text style={s.newsExcerpt} numberOfLines={compact ? 2 : 3}>{cleanText(item.excerpt)}</Text>
         <View style={s.newsFooter}>
           <Text style={s.newsLink}>{readLabel}</Text>
           <Ionicons name="arrow-forward" size={13} color={colors.gold} />
@@ -253,27 +259,38 @@ const makeStyles = (c, t) => ({
     backgroundColor: c.surfaceAlt,
     borderWidth: 1,
     borderColor: c.line,
-    minHeight: 330,
+    minHeight: 200,
     ...shadow.card,
   },
   heroMedia: { ...StyleSheet.absoluteFillObject, backgroundColor: c.surfaceAlt },
   heroImage: { width: '100%', height: '100%' },
-  heroBody: { marginTop: 'auto', padding: spacing.lg, gap: spacing.sm },
-  heroTags: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-  heroTitle: { fontSize: 22, lineHeight: 28, fontWeight: '900', color: '#FFFFFF' },
-  heroExcerpt: { fontSize: 13, lineHeight: 20, color: '#D5D9E4' },
+  heroBody: { marginTop: 'auto', padding: spacing.md, gap: 4 },
+  heroTags: { flexDirection: 'row', gap: 4, flexWrap: 'wrap', marginBottom: 2 },
+  heroTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  heroExcerpt: {
+    fontSize: 10,
+    lineHeight: 14,
+    color: '#C5CAD6',
+    opacity: 0.95,
+  },
   heroCta: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 6,
-    marginTop: spacing.xs,
+    marginTop: 4,
     backgroundColor: c.primary,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: 6,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.pill,
   },
-  heroCtaText: { color: c.onPrimary, fontSize: 12, fontWeight: '800' },
+  heroCtaText: { color: c.onPrimary, fontSize: 11, fontWeight: '800' },
 
   program: {
     width: 268,
@@ -324,6 +341,13 @@ const makeStyles = (c, t) => ({
     borderWidth: 1,
     borderColor: c.line,
     overflow: 'hidden',
+    minHeight: 120,
+    maxHeight: 160,
+  },
+  newsThumb: {
+    width: 96,
+    height: '100%',
+    backgroundColor: c.surfaceAlt,
   },
   newsCompact: { width: 290 },
   newsAccent: { width: 4, backgroundColor: c.primary },

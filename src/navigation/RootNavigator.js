@@ -1,17 +1,23 @@
+// src/navigation/RootNavigator.js
 import React from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../theme';
 import { useI18n } from '../i18n/i18n';
+import { useAuth } from '../context/AuthContext';
+import analytics from '../utils/analytics';
 
+import FloatingTabBar from '../components/FloatingTabBar';
+
+// Screens
+import WelcomeScreen from '../screens/WelcomeScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 import HomeScreen from '../screens/HomeScreen';
 import FacilitiesScreen from '../screens/FacilitiesScreen';
 import FacilityDetailScreen from '../screens/FacilityDetailScreen';
-import EventsScreen from '../screens/EventsScreen';
-import EventDetailScreen from '../screens/EventDetailScreen';
 import NewsScreen from '../screens/NewsScreen';
 import NewsDetailScreen from '../screens/NewsDetailScreen';
 import MoreScreen from '../screens/MoreScreen';
@@ -21,64 +27,115 @@ import PaymentScreen from '../screens/PaymentScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import ProfileCompleteScreen from '../screens/ProfileCompleteScreen';
+import BookingFormScreen from '../screens/BookingFormScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import RescheduleScreen from '../screens/RescheduleScreen';
+import FavoritesScreen from '../screens/FavoritesScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import { setNavigationRef } from '../hooks/useDeepLinking';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-const ICONS = {
-  Beranda: ['home', 'home-outline'],
-  Fasilitas: ['business', 'business-outline'],
-  Acara: ['calendar', 'calendar-outline'],
-  Berita: ['newspaper', 'newspaper-outline'],
-  Lainnya: ['grid', 'grid-outline'],
-};
-
 function Tabs() {
-  const { colors } = useTheme();
-  const { t } = useI18n();
-
-  const labels = {
-    Beranda: t('tab.home'),
-    Fasilitas: t('tab.facilities'),
-    Acara: t('tab.events'),
-    Berita: t('tab.news'),
-    Lainnya: t('tab.more'),
-  };
-
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textFaint,
-        tabBarLabel: labels[route.name],
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.line,
-          borderTopWidth: 1,
-          height: 62,
-          paddingBottom: 8,
-          paddingTop: 8,
-        },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
-        tabBarIcon: ({ focused, color, size }) => {
-          const [active, inactive] = ICONS[route.name] || ['ellipse', 'ellipse-outline'];
-          return <Ionicons name={focused ? active : inactive} size={size - 3} color={color} />;
-        },
-      })}
+      tabBar={(props) => <FloatingTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Beranda" component={HomeScreen} />
       <Tab.Screen name="Fasilitas" component={FacilitiesScreen} />
-      <Tab.Screen name="Acara" component={EventsScreen} />
+      <Tab.Screen name="Helpdesk" component={HelpdeskScreen} />
       <Tab.Screen name="Berita" component={NewsScreen} />
       <Tab.Screen name="Lainnya" component={MoreScreen} />
     </Tab.Navigator>
   );
 }
 
+function GuestStack() {
+  const { colors } = useTheme();
+  const { t } = useI18n();
+  return (
+    <Stack.Navigator
+      initialRouteName="Welcome"
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.base },
+        headerTintColor: colors.text,
+        headerTitleStyle: { fontWeight: '800', fontSize: 16 },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: 'transparent' },
+      }}
+    >
+      <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Register" component={RegisterScreen} options={{ title: t('more.register') }} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifikasi' }} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: 'Kebijakan Privasi' }} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Lupa Password' }} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Reset Password' }} />
+    </Stack.Navigator>
+  );
+}
+
+function ProfileSetupStack() {
+  const { colors } = useTheme();
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: 'transparent' },
+      }}
+    >
+      <Stack.Screen name="ProfileComplete" component={ProfileCompleteScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function AppStack() {
+  const { colors } = useTheme();
+  const { t, lang } = useI18n();
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.base },
+        headerTintColor: colors.text,
+        headerTitleStyle: { fontWeight: '800', fontSize: 16 },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: 'transparent' },
+      }}
+    >
+      <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
+      <Stack.Screen name="FacilityDetail" component={FacilityDetailScreen} options={{ title: t('facilities.title') }} />
+      <Stack.Screen name="BookingForm" component={BookingFormScreen} options={{ title: lang === 'en' ? 'New Booking' : 'Buat Booking' }} />
+      <Stack.Screen name="NewsDetail" component={NewsDetailScreen} options={{ title: t('news.detail') }} />
+      <Stack.Screen name="Chat" component={ChatScreen} options={{ title: t('chat.title') }} />
+      <Stack.Screen name="Helpdesk" component={HelpdeskScreen} options={{ title: t('helpdesk.title') }} />
+      <Stack.Screen name="Payment" component={PaymentScreen} options={{ title: t('pay.title') }} />
+      <Stack.Screen name="Transactions" component={TransactionsScreen} options={{ title: lang === 'en' ? 'My Transactions' : 'Transaksi Saya' }} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: lang === 'en' ? 'Edit Profile' : 'Edit Profil' }} />
+      <Stack.Screen name="Reschedule" component={RescheduleScreen} options={{ title: lang === 'en' ? 'Reschedule' : 'Ubah Jadwal' }} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: lang === 'en' ? 'Notifications' : 'Notifikasi' }} />
+      <Stack.Screen name="Favorites" component={FavoritesScreen} options={{ title: lang === 'en' ? 'Favorites' : 'Favorit' }} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: 'Kebijakan Privasi' }} />
+    </Stack.Navigator>
+  );
+}
+
+const onNavigationStateChange = (state) => {
+  try {
+    const currentRoute = state?.routes?.[state.index];
+    if (currentRoute?.name) {
+      analytics.logScreen(currentRoute.name);
+    }
+  } catch {}
+};
+
 export default function RootNavigator() {
   const { colors, isDark } = useTheme();
-  const { t } = useI18n();
+  const { ready, isLoggedIn, isProfileComplete } = useAuth();
 
   const base = isDark ? DarkTheme : DefaultTheme;
   const navTheme = {
@@ -87,7 +144,7 @@ export default function RootNavigator() {
     colors: {
       ...base.colors,
       primary: colors.primary,
-      background: colors.base,
+      background: 'transparent',
       card: colors.base,
       text: colors.text,
       border: colors.line,
@@ -95,52 +152,30 @@ export default function RootNavigator() {
     },
   };
 
-  return (
-    <NavigationContainer theme={navTheme}>
-      <Stack.Navigator
-        screenOptions={{
-          headerStyle: { backgroundColor: colors.base },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '800', fontSize: 16 },
-          headerShadowVisible: false,
-          contentStyle: { backgroundColor: colors.base },
+  if (!ready) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.base,
         }}
       >
-        <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
-        <Stack.Screen
-          name="FacilityDetail"
-          component={FacilityDetailScreen}
-          options={{ title: t('facilities.title') }}
-        />
-        <Stack.Screen
-          name="EventDetail"
-          component={EventDetailScreen}
-          options={{ title: t('events.detail') }}
-        />
-        <Stack.Screen
-          name="NewsDetail"
-          component={NewsDetailScreen}
-          options={{ title: t('news.detail') }}
-        />
-        <Stack.Screen name="Chat" component={ChatScreen} options={{ title: t('chat.title') }} />
-        <Stack.Screen
-          name="Helpdesk"
-          component={HelpdeskScreen}
-          options={{ title: t('helpdesk.title') }}
-        />
-        <Stack.Screen name="Payment" component={PaymentScreen} options={{ title: t('pay.title') }} />
-        <Stack.Screen
-          name="Transactions"
-          component={TransactionsScreen}
-          options={{ title: t('pay.title') }}
-        />
-        <Stack.Screen name="Login" component={LoginScreen} options={{ title: t('more.login') }} />
-        <Stack.Screen
-          name="Register"
-          component={RegisterScreen}
-          options={{ title: t('more.register') }}
-        />
-      </Stack.Navigator>
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
+  }
+
+  return (
+    <NavigationContainer ref={setNavigationRef} theme={navTheme} onStateChange={onNavigationStateChange}>
+      {!isLoggedIn ? (
+        <GuestStack />
+      ) : !isProfileComplete ? (
+        <ProfileSetupStack />
+      ) : (
+        <AppStack />
+      )}
     </NavigationContainer>
   );
 }

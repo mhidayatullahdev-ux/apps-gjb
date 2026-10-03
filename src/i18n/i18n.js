@@ -1,3 +1,4 @@
+// src/i18n/i18n.js
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -5,12 +6,75 @@ const STORAGE_KEY = 'dispora.lang';
 
 const dict = {
   id: {
+    // ============ HEADER ============
+    'header.search': 'Cari fasilitas atau berita...',
+
+    // ============ MENU PROFILE MODAL ============
+    'menu.editProfile': 'Edit Profil',
+    'menu.editProfileDesc': 'Nama, email, foto, password',
+    'menu.transactions': 'Transaksi Saya',
+    'menu.transactionsDesc': 'Status pemesanan & pembayaran',
+    'menu.helpdesk': 'Helpdesk',
+    'menu.chat': 'Live Chat',
+    'menu.accountSettings': 'Pengaturan Akun',
+
+    // ============ WIDGET MENU CEPAT ============
+    'widget.sectionLabel': 'MENU CEPAT',
+    'widget.facilities': 'Fasilitas',
+    'widget.booking': 'Booking',
+    'widget.transactions': 'Transaksi',
+    'widget.chat': 'Chat',
+    'widget.helpdesk': 'Helpdesk',
+    'widget.news': 'Berita',
+    'widget.profile': 'Profil',
+    'widget.more': 'Lainnya',
+
+    // ============ TAB ============
     'tab.home': 'Beranda',
     'tab.facilities': 'Fasilitas',
     'tab.events': 'Acara',
     'tab.news': 'Berita',
     'tab.more': 'Lainnya',
+    'tab.helpdesk': 'Helpdesk',
 
+    // ============ AUTH ============
+    'auth.or': 'atau',
+    'auth.googleLogin': 'Masuk dengan Google',
+    'auth.loginTitle': 'Masuk',
+    'auth.loginSubtitle': 'Masuk untuk memesan fasilitas dan melacak tiket.',
+    'auth.registerTitle': 'Daftar',
+    'auth.registerSubtitle': 'Buat akun untuk mulai memakai layanan Dispora.',
+    'auth.name': 'Nama lengkap',
+    'auth.email': 'Email',
+    'auth.phone': 'Nomor HP',
+    'auth.password': 'Kata sandi',
+    'auth.confirmPassword': 'Ulangi kata sandi',
+    'auth.noAccount': 'Belum punya akun? Daftar',
+    'auth.haveAccount': 'Sudah punya akun? Masuk',
+    'auth.errRequired': 'Semua kolom wajib diisi.',
+    'auth.errEmail': 'Format email tidak valid.',
+    'auth.errPassword': 'Kata sandi minimal 6 karakter.',
+    'auth.errMatch': 'Kata sandi tidak sama.',
+    'auth.errNotFound': 'Email atau kata sandi salah.',
+    'auth.errExists': 'Email sudah terdaftar.',
+    'auth.localOnly': 'Akun disimpan di perangkat ini saja (mode demo).',
+
+    // ============ PROFILE ============
+    'profile.title': 'Lengkapi Profil',
+    'profile.subtitle': 'Hai {name}, lengkapi data diri Anda untuk mulai memesan lapangan.',
+    'profile.nik': 'NIK (16 digit)',
+    'profile.phone': 'Nomor HP',
+    'profile.gender': 'Jenis Kelamin',
+    'profile.male': 'Laki-laki',
+    'profile.female': 'Perempuan',
+    'profile.birthDate': 'Tanggal Lahir',
+    'profile.save': 'Simpan & Lanjutkan',
+    'profile.errNik': 'NIK harus 16 digit angka.',
+    'profile.errPhone': 'Nomor HP wajib diisi.',
+    'profile.errGender': 'Pilih jenis kelamin.',
+    'profile.errDate': 'Format tanggal: YYYY-MM-DD.',
+
+    // ============ HOME ============
     'home.eyebrow': 'PEMBERDAYAAN PEMUDA & OLAHRAGA',
     'home.heroFallbackTitle': 'Membangun masa depan Jakarta melalui pemuda & olahraga',
     'home.heroFallbackBody':
@@ -36,6 +100,7 @@ const dict = {
     'home.schedule': 'Lihat jadwal',
     'home.allNews': 'Semua berita',
 
+    // ============ COMMON ============
     'common.more': 'Selengkapnya',
     'common.readMore': 'Baca selengkapnya',
     'common.retry': 'Coba lagi',
@@ -47,6 +112,7 @@ const dict = {
     'common.close': 'Tutup',
     'common.offline': 'Gagal memuat data. Menampilkan data contoh.',
 
+    // ============ FACILITIES ============
     'facilities.title': 'Fasilitas',
     'facilities.caption': 'Fasilitas olahraga milik Dispora yang bisa dipesan.',
     'facilities.searchPlaceholder': 'Cari fasilitas...',
@@ -54,6 +120,7 @@ const dict = {
     'facilities.emptyHint': 'Coba kata kunci lain atau pilih wilayah yang berbeda.',
     'facilities.book': 'Pesan',
 
+    // ============ EVENTS ============
     'events.title': 'Acara',
     'events.caption': 'Jadwal kegiatan, kejuaraan, dan pelatihan Dispora DKI Jakarta.',
     'events.empty': 'Belum ada acara di kategori ini',
@@ -63,6 +130,7 @@ const dict = {
     'events.location': 'Lokasi',
     'events.category': 'Kategori',
 
+    // ============ NEWS ============
     'news.title': 'Berita',
     'news.caption': 'Kabar terbaru dari Dispora DKI Jakarta.',
     'news.searchPlaceholder': 'Cari berita...',
@@ -70,6 +138,7 @@ const dict = {
     'news.detail': 'Detail berita',
     'news.share': 'Bagikan berita ini',
 
+    // ============ MORE ============
     'more.title': 'Lainnya',
     'more.caption': 'Layanan, pengaturan, dan kontak resmi.',
     'more.appearance': 'Tampilan',
@@ -80,6 +149,7 @@ const dict = {
     'more.login': 'Masuk',
     'more.register': 'Daftar',
     'more.logout': 'Keluar',
+    'more.logoutConfirm': 'Yakin ingin keluar dari akun?',
     'more.loggedInAs': 'Masuk sebagai',
     'more.services': 'Layanan',
     'more.chat': 'Live chat',
@@ -91,32 +161,16 @@ const dict = {
     'more.contact': 'Kontak',
     'more.social': 'Media sosial',
     'more.demoNote': 'Demo aplikasi — sebagian data adalah contoh',
+    'more.office': 'Dinas Pemuda dan Olahraga Provinsi DKI Jakarta',
 
-    'auth.loginTitle': 'Masuk',
-    'auth.loginSubtitle': 'Masuk untuk memesan fasilitas dan melacak tiket.',
-    'auth.registerTitle': 'Daftar',
-    'auth.registerSubtitle': 'Buat akun untuk mulai memakai layanan Dispora.',
-    'auth.name': 'Nama lengkap',
-    'auth.email': 'Email',
-    'auth.phone': 'Nomor HP',
-    'auth.password': 'Kata sandi',
-    'auth.confirmPassword': 'Ulangi kata sandi',
-    'auth.noAccount': 'Belum punya akun? Daftar',
-    'auth.haveAccount': 'Sudah punya akun? Masuk',
-    'auth.errRequired': 'Semua kolom wajib diisi.',
-    'auth.errEmail': 'Format email tidak valid.',
-    'auth.errPassword': 'Kata sandi minimal 6 karakter.',
-    'auth.errMatch': 'Kata sandi tidak sama.',
-    'auth.errNotFound': 'Email atau kata sandi salah.',
-    'auth.errExists': 'Email sudah terdaftar.',
-    'auth.localOnly': 'Akun disimpan di perangkat ini saja (mode demo).',
-
+    // ============ CHAT ============
     'chat.title': 'Live chat',
     'chat.placeholder': 'Tulis pesan...',
     'chat.greeting': 'Halo! Ada yang bisa dibantu seputar layanan Dispora DKI Jakarta?',
     'chat.error': 'Gagal mengirim pesan. Periksa koneksi lalu coba lagi.',
     'chat.typing': 'Sedang mengetik...',
 
+    // ============ HELPDESK ============
     'helpdesk.title': 'Helpdesk',
     'helpdesk.caption': 'Daftar tiket layanan.',
     'helpdesk.empty': 'Belum ada tiket',
@@ -125,6 +179,7 @@ const dict = {
     'helpdesk.closed': 'Selesai',
     'helpdesk.pending': 'Diproses',
 
+    // ============ PAYMENT ============
     'pay.title': 'Pembayaran',
     'pay.simulation': 'SIMULASI — tidak ada transaksi nyata',
     'pay.item': 'Rincian',
@@ -145,15 +200,114 @@ const dict = {
     'pay.copy': 'Salin',
     'pay.copied': 'Tersalin',
     'pay.needLogin': 'Masuk dulu untuk melanjutkan pembayaran.',
+
+    // ===== RESCHEDULE =====
+    'reschedule.title': 'Ubah Jadwal',
+    'reschedule.submit': 'Ajukan Reschedule',
+    'reschedule.terms': 'Syarat & Ketentuan',
+    'reschedule.accept': 'Saya setuju dengan ketentuan',
+    'reschedule.newDate': 'Tanggal Baru',
+    'reschedule.slots': 'Slot Tersedia',
+    'reschedule.currentSchedule': 'Jadwal Saat Ini',
+    'reschedule.court': 'Lapangan',
+    'reschedule.facility': 'Fasilitas',
+    'reschedule.minDays': 'Reschedule minimal H-{days} sebelum jadwal.',
+    'reschedule.maxTimes': 'Maksimal {times}x reschedule.',
+
+    // ===== CANCEL =====
+    'cancel.title': 'Batalkan Booking',
+    'cancel.confirm': 'Yakin ingin membatalkan booking ini?',
+    'cancel.yes': 'Ya, Batalkan',
+    'cancel.no': 'Tidak',
+    'cancel.cancelling': 'Membatalkan...',
+
+    // ===== INVOICE =====
+    'invoice.download': 'Download Invoice',
+    'invoice.downloading': 'Mengunduh...',
+    'invoice.success': 'Invoice berhasil diunduh.',
+    'invoice.failed': 'Gagal mengunduh invoice.',
+
+    // ===== AVAILABILITY =====
+    'availability.pickDate': 'PILIH TANGGAL',
+    'availability.availableSlots': 'SLOT TERSEDIA',
+    'availability.noSchedule': 'Jadwal belum tersedia.',
+    'availability.loading': 'Memuat jadwal...',
+    'availability.findOther': 'Cari GOR Lain',
+    'availability.suggestions': 'SARAN GOR LAIN',
+    'availability.noSuggestions': 'Tidak ada GOR lain yang tersedia di jam ini.',
+
   },
 
   en: {
+    // ============ HEADER ============
+    'header.search': 'Search facilities or news...',
+
+    // ============ MENU PROFILE MODAL ============
+    'menu.editProfile': 'Edit Profile',
+    'menu.editProfileDesc': 'Name, email, photo, password',
+    'menu.transactions': 'My Transactions',
+    'menu.transactionsDesc': 'Booking & payment status',
+    'menu.helpdesk': 'Helpdesk',
+    'menu.chat': 'Live Chat',
+    'menu.accountSettings': 'Account Settings',
+
+    // ============ WIDGET MENU CEPAT ============
+    'widget.sectionLabel': 'QUICK MENU',
+    'widget.facilities': 'Facilities',
+    'widget.booking': 'Booking',
+    'widget.transactions': 'Transactions',
+    'widget.chat': 'Chat',
+    'widget.helpdesk': 'Helpdesk',
+    'widget.news': 'News',
+    'widget.profile': 'Profile',
+    'widget.more': 'More',
+
+    // ============ TAB ============
     'tab.home': 'Home',
     'tab.facilities': 'Facilities',
     'tab.events': 'Events',
     'tab.news': 'News',
     'tab.more': 'More',
+    'tab.helpdesk': 'Helpdesk',
 
+    // ============ AUTH ============
+    'auth.or': 'or',
+    'auth.googleLogin': 'Sign in with Google',
+    'auth.loginTitle': 'Sign in',
+    'auth.loginSubtitle': 'Sign in to book facilities and track tickets.',
+    'auth.registerTitle': 'Sign up',
+    'auth.registerSubtitle': 'Create an account to start using Dispora services.',
+    'auth.name': 'Full name',
+    'auth.email': 'Email',
+    'auth.phone': 'Phone number',
+    'auth.password': 'Password',
+    'auth.confirmPassword': 'Repeat password',
+    'auth.noAccount': "Don't have an account? Sign up",
+    'auth.haveAccount': 'Already have an account? Sign in',
+    'auth.errRequired': 'All fields are required.',
+    'auth.errEmail': 'Invalid email format.',
+    'auth.errPassword': 'Password must be at least 6 characters.',
+    'auth.errMatch': 'Passwords do not match.',
+    'auth.errNotFound': 'Wrong email or password.',
+    'auth.errExists': 'Email is already registered.',
+    'auth.localOnly': 'Accounts are stored on this device only (demo mode).',
+
+    // ============ PROFILE ============
+    'profile.title': 'Complete Your Profile',
+    'profile.subtitle': 'Hi {name}, complete your details to start booking.',
+    'profile.nik': 'National ID (16 digits)',
+    'profile.phone': 'Phone number',
+    'profile.gender': 'Gender',
+    'profile.male': 'Male',
+    'profile.female': 'Female',
+    'profile.birthDate': 'Date of Birth',
+    'profile.save': 'Save & Continue',
+    'profile.errNik': 'National ID must be 16 digits.',
+    'profile.errPhone': 'Phone number is required.',
+    'profile.errGender': 'Please select a gender.',
+    'profile.errDate': 'Date format: YYYY-MM-DD.',
+
+    // ============ HOME ============
     'home.eyebrow': 'YOUTH & SPORTS EMPOWERMENT',
     'home.heroFallbackTitle': "Building Jakarta's future through youth & sports",
     'home.heroFallbackBody':
@@ -178,6 +332,7 @@ const dict = {
     'home.schedule': 'View schedule',
     'home.allNews': 'All news',
 
+    // ============ COMMON ============
     'common.more': 'Learn more',
     'common.readMore': 'Read more',
     'common.retry': 'Try again',
@@ -189,6 +344,7 @@ const dict = {
     'common.close': 'Close',
     'common.offline': 'Failed to load. Showing sample data.',
 
+    // ============ FACILITIES ============
     'facilities.title': 'Facilities',
     'facilities.caption': 'Dispora-owned sports facilities available for booking.',
     'facilities.searchPlaceholder': 'Search facilities...',
@@ -196,6 +352,7 @@ const dict = {
     'facilities.emptyHint': 'Try another keyword or pick a different area.',
     'facilities.book': 'Book',
 
+    // ============ EVENTS ============
     'events.title': 'Events',
     'events.caption': 'Activities, championships, and training by Dispora DKI Jakarta.',
     'events.empty': 'No events in this category yet',
@@ -205,6 +362,7 @@ const dict = {
     'events.location': 'Location',
     'events.category': 'Category',
 
+    // ============ NEWS ============
     'news.title': 'News',
     'news.caption': 'Latest updates from Dispora DKI Jakarta.',
     'news.searchPlaceholder': 'Search news...',
@@ -212,6 +370,7 @@ const dict = {
     'news.detail': 'News detail',
     'news.share': 'Share this article',
 
+    // ============ MORE ============
     'more.title': 'More',
     'more.caption': 'Services, settings, and official contacts.',
     'more.appearance': 'Appearance',
@@ -222,6 +381,7 @@ const dict = {
     'more.login': 'Sign in',
     'more.register': 'Sign up',
     'more.logout': 'Sign out',
+    'more.logoutConfirm': 'Are you sure you want to sign out?',
     'more.loggedInAs': 'Signed in as',
     'more.services': 'Services',
     'more.chat': 'Live chat',
@@ -233,32 +393,16 @@ const dict = {
     'more.contact': 'Contact',
     'more.social': 'Social media',
     'more.demoNote': 'Demo app — some data is sample content',
+    'more.office': 'Youth and Sports Agency of DKI Jakarta',
 
-    'auth.loginTitle': 'Sign in',
-    'auth.loginSubtitle': 'Sign in to book facilities and track tickets.',
-    'auth.registerTitle': 'Sign up',
-    'auth.registerSubtitle': 'Create an account to start using Dispora services.',
-    'auth.name': 'Full name',
-    'auth.email': 'Email',
-    'auth.phone': 'Phone number',
-    'auth.password': 'Password',
-    'auth.confirmPassword': 'Repeat password',
-    'auth.noAccount': "Don't have an account? Sign up",
-    'auth.haveAccount': 'Already have an account? Sign in',
-    'auth.errRequired': 'All fields are required.',
-    'auth.errEmail': 'Invalid email format.',
-    'auth.errPassword': 'Password must be at least 6 characters.',
-    'auth.errMatch': 'Passwords do not match.',
-    'auth.errNotFound': 'Wrong email or password.',
-    'auth.errExists': 'Email is already registered.',
-    'auth.localOnly': 'Accounts are stored on this device only (demo mode).',
-
+    // ============ CHAT ============
     'chat.title': 'Live chat',
     'chat.placeholder': 'Type a message...',
     'chat.greeting': 'Hi! How can I help you with Dispora DKI Jakarta services?',
     'chat.error': 'Failed to send. Check your connection and try again.',
     'chat.typing': 'Typing...',
 
+    // ============ HELPDESK ============
     'helpdesk.title': 'Helpdesk',
     'helpdesk.caption': 'Service ticket list.',
     'helpdesk.empty': 'No tickets yet',
@@ -267,6 +411,7 @@ const dict = {
     'helpdesk.closed': 'Closed',
     'helpdesk.pending': 'In progress',
 
+    // ============ PAYMENT ============
     'pay.title': 'Payment',
     'pay.simulation': 'SIMULATION — no real transaction',
     'pay.item': 'Details',
@@ -287,6 +432,42 @@ const dict = {
     'pay.copy': 'Copy',
     'pay.copied': 'Copied',
     'pay.needLogin': 'Sign in first to continue with payment.',
+
+    // ===== RESCHEDULE =====
+    'reschedule.title': 'Reschedule',
+    'reschedule.submit': 'Submit Reschedule',
+    'reschedule.terms': 'Terms & Conditions',
+    'reschedule.accept': 'I agree to the terms',
+    'reschedule.newDate': 'New Date',
+    'reschedule.slots': 'Available Slots',
+    'reschedule.currentSchedule': 'Current Schedule',
+    'reschedule.court': 'Court',
+    'reschedule.facility': 'Facility',
+    'reschedule.minDays': 'Reschedule at least H-{days} before schedule.',
+    'reschedule.maxTimes': 'Maximum {times} reschedules.',
+
+    // ===== CANCEL =====
+    'cancel.title': 'Cancel Booking',
+    'cancel.confirm': 'Are you sure you want to cancel this booking?',
+    'cancel.yes': 'Yes, Cancel',
+    'cancel.no': 'No',
+    'cancel.cancelling': 'Cancelling...',
+
+    // ===== INVOICE =====
+    'invoice.download': 'Download Invoice',
+    'invoice.downloading': 'Downloading...',
+    'invoice.success': 'Invoice downloaded successfully.',
+    'invoice.failed': 'Failed to download invoice.',
+
+    // ===== AVAILABILITY =====
+    'availability.pickDate': 'PICK A DATE',
+    'availability.availableSlots': 'AVAILABLE SLOTS',
+    'availability.noSchedule': 'No schedule available.',
+    'availability.loading': 'Loading schedule...',
+    'availability.findOther': 'Find Other GOR',
+    'availability.suggestions': 'OTHER GOR SUGGESTIONS',
+    'availability.noSuggestions': 'No other GOR available at this hour.',
+
   },
 };
 

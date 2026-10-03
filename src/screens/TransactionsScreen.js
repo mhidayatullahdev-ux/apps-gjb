@@ -1,163 +1,157 @@
+// src/screens/TransactionsScreen.js
 import React, { useCallback, useState } from 'react';
-import { View, Text, FlatList, TextInput, Pressable, RefreshControl, Alert } from 'react-native';
+import { View, Text, FlatList, RefreshControl, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { useTheme, useThemedStyles, spacing, radius } from '../theme';
-import { useI18n } from '../i18n/i18n';
-import { listOrders, findOrder, checkStatus, formatRupiah } from '../api/payment';
-import { EmptyState, Tag, PrimaryButton, Notice } from '../components/common';
-import { FadeInUp, PressableScale, stagger } from '../components/anim';
+import { useSettings } from '../context/SettingsContext';
+import { useNetwork } from '../context/NetworkContext';
+import { bookingsApi } from '../api/bookings';
+import { EmptyState, Tag, Loader } from '../components/common';
+import { FadeInUp, stagger } from '../components/anim';
+import OfflineNotice from '../components/OfflineNotice';
 
-const L = {
-  id: {
-    title: 'Transaksi Saya',
-    caption: 'Riwayat pemesanan dan status pembayaran.',
-    searchPlaceholder: 'Cari Order ID, misal DSP1758…',
-    empty: 'Belum ada transaksi',
-    emptyHint: 'Pemesanan yang kamu buat akan muncul di sini.',
-    notFound: 'Order ID tidak ditemukan di perangkat ini.',
-    refresh: 'Perbarui status',
-    checking: 'Memeriksa...',
-    paid: 'LUNAS',
-    pending: 'MENUNGGU',
-    expired: 'KEDALUWARSA',
-    method: 'Metode',
-    created: 'Dibuat',
-    total: 'Total',
-    localOnly: 'Riwayat disimpan di perangkat ini saja (mode demo).',
-    methods: {
-      qris: 'QRIS',
-      va_bank_dki: 'VA Bank DKI',
-      transfer_bank_dki: 'Transfer Bank DKI',
-    },
-  },
-  en: {
-    title: 'My Transactions',
-    caption: 'Booking history and payment status.',
-    searchPlaceholder: 'Search Order ID, e.g. DSP1758…',
-    empty: 'No transactions yet',
-    emptyHint: 'Bookings you create will show up here.',
-    notFound: 'Order ID not found on this device.',
-    refresh: 'Refresh status',
-    checking: 'Checking...',
-    paid: 'PAID',
-    pending: 'PENDING',
-    expired: 'EXPIRED',
-    method: 'Method',
-    created: 'Created',
-    total: 'Total',
-    localOnly: 'History is stored on this device only (demo mode).',
-    methods: {
-      qris: 'QRIS',
-      va_bank_dki: 'Bank DKI VA',
-      transfer_bank_dki: 'Bank DKI Transfer',
-    },
-  },
-};
-
-export default function TransactionsScreen() {
+export default function TransactionsScreen({ navigation }) {
   const { colors } = useTheme();
-  const { lang } = useI18n();
   const s = useThemedStyles(makeStyles);
-  const tx = L[lang] || L.id;
+  const settings = useSettings();
+  const { isOnline } = useNetwork();
 
-  const [orders, setOrders] = useState([]);
-  const [query, setQuery] = useState('');
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [checkingId, setCheckingId] = useState(null);
+  const [tab, setTab] = useState('history');
 
   const load = useCallback(async () => {
-    const data = await listOrders();
-    setOrders(data);
-    setRefreshing(false);
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
-
-  const onSearch = async () => {
-    const q = query.trim();
-    if (!q) {
-      load();
+    if (!isOnline) {
+      setLoading(false);
+      setRefreshing(false);
       return;
     }
-    const found = await findOrder(q);
-    if (!found) {
-      Alert.alert(tx.title, tx.notFound);
-      return;
-    }
-    setOrders([found]);
-  };
-
-  const refreshOne = async (orderId) => {
-    setCheckingId(orderId);
     try {
-      await checkStatus(orderId);
-      await load();
+      const res = await bookingsApi.list();
+      const all = res.data || res.bookings?.data || [];
+      const historyDays = settings?.booking?.history_days || 30;
+      const limitDate = new Date();
+      limitDate.setDate(limitDate.getDate() - historyDays);
+
+      const filtered = all.filter((b) => {
+        const bDate = new Date(b.booking_date);
+        return tab === 'archive' ? bDate < limitDate : bDate >= limitDate;
+      });
+
+      // ✅ Sort terbaru di atas — pakai created_at, fallback ke id
+      const sorted = [...filtered].sort((a, b) => {
+        const dateA = new Date(a.created_at || a.booking_date || 0).getTime();
+        const dateB = new Date(b.created_at || b.booking_date || 0).getTime();
+        if (dateB !== dateA) return dateB - dateA;
+        return (Number(b.id) || 0) - (Number(a.id) || 0);
+      });
+
+      setBookings(sorted);
     } catch (e) {
-      // biarkan
+      console.warn('[Transactions] load error:', e);
+      setBookings([]);
     } finally {
-      setCheckingId(null);
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [tab, settings?.booking?.history_days, isOnline]);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const openDetail = async (item) => {
+    if (!isOnline) return;
+    try {
+      const res = await bookingsApi.detail(item.id);
+      navigation.navigate('Payment', {
+        order: {
+          item: `${item.court?.facility?.name} - ${item.court?.name}`,
+          amount: item.total_amount,
+          detail: `${item.purpose} · ${item.booking_date} · ${item.start_time}-${item.end_time}`,
+          bookingCode: item.booking_code,
+          bookingId: item.id,
+          booking: res.booking,
+        },
+      });
+    } catch (e) {
+      navigation.navigate('Payment', {
+        order: {
+          item: `${item.court?.facility?.name} - ${item.court?.name}`,
+          amount: item.total_amount,
+          detail: `${item.purpose} · ${item.booking_date} · ${item.start_time}-${item.end_time}`,
+          bookingCode: item.booking_code,
+          bookingId: item.id,
+          booking: item,
+        },
+      });
     }
   };
 
-  const statusInfo = (status) => {
-    if (status === 'PAID') return { label: tx.paid, tone: 'success', icon: 'checkmark-circle' };
-    if (status === 'EXPIRED') return { label: tx.expired, tone: 'neutral', icon: 'close-circle' };
-    return { label: tx.pending, tone: 'gold', icon: 'time' };
-  };
+  if (loading) return <Loader />;
 
   const header = (
     <View style={s.headerWrap}>
-      <Text style={s.title}>{tx.title}</Text>
-      <Text style={s.caption}>{tx.caption}</Text>
-
-      <View style={s.searchBox}>
-        <Ionicons name="search" size={17} color={colors.textFaint} />
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder={tx.searchPlaceholder}
-          placeholderTextColor={colors.textFaint}
-          style={s.searchInput}
-          autoCapitalize="characters"
-          returnKeyType="search"
-          onSubmitEditing={onSearch}
-        />
-        {query ? (
+      <Text style={s.title}>Transaksi Saya</Text>
+      <View style={s.tabRow}>
+        {[
+          { id: 'history', label: 'Riwayat' },
+          { id: 'archive', label: 'Arsip' },
+        ].map((tb) => (
           <Pressable
-            onPress={() => {
-              setQuery('');
-              load();
-            }}
-            hitSlop={8}
+            key={tb.id}
+            onPress={() => setTab(tb.id)}
+            style={[s.tab, tab === tb.id && s.tabActive]}
           >
-            <Ionicons name="close-circle" size={17} color={colors.textFaint} />
+            <Text style={[s.tabText, tab === tb.id && s.tabTextActive]}>
+              {tb.label}
+            </Text>
           </Pressable>
-        ) : null}
+        ))}
       </View>
-
-      <Notice text={tx.localOnly} tone="gold" icon="phone-portrait-outline" />
     </View>
   );
 
+  const statusInfo = (status) => {
+    const tone =
+      status === 'approved' || status === 'completed'
+        ? 'success'
+        : status === 'pending'
+        ? 'gold'
+        : status === 'rejected' || status === 'cancelled' || status === 'expired'
+        ? 'neutral'
+        : 'primary';
+    return { label: settings.bookingStatusLabel(status), tone };
+  };
+
+  const paymentInfo = (ps) => {
+    const tone =
+      ps === 'paid'
+        ? 'success'
+        : ps === 'waiting_verification'
+        ? 'gold'
+        : 'neutral';
+    return { label: settings.paymentStatusLabel(ps), tone };
+  };
+
   return (
-    <View style={s.screen}>
+    <View style={{ flex: 1 }}>
       <FlatList
-        data={orders}
-        keyExtractor={(item) => item.orderId}
-        ListHeaderComponent={header}
+        data={bookings}
+        keyExtractor={(item) => String(item.id)}
+        ListHeaderComponent={
+          <>
+            {header}
+            <OfflineNotice />
+          </>
+        }
         contentContainerStyle={s.list}
         ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
+            enabled={isOnline}
             onRefresh={() => {
               setRefreshing(true);
               load();
@@ -167,73 +161,57 @@ export default function TransactionsScreen() {
         }
         renderItem={({ item, index }) => {
           const st = statusInfo(item.status);
-          const busy = checkingId === item.orderId;
+          const ps = paymentInfo(item.payment_status);
           return (
             <FadeInUp delay={stagger(index)}>
-              <View style={s.card}>
+              <Pressable
+                onPress={() => openDetail(item)}
+                disabled={!isOnline}
+                style={[s.card, !isOnline && { opacity: 0.6 }]}
+              >
                 <View style={s.cardTop}>
-                  <Text style={s.orderId}>{item.orderId}</Text>
+                  <Text style={s.code}>{item.booking_code}</Text>
                   <Tag label={st.label} tone={st.tone} />
                 </View>
-
                 <Text style={s.item} numberOfLines={2}>
-                  {item.item}
+                  {item.court?.facility?.name} - {item.court?.name}
                 </Text>
-
-                <View style={s.metaRow}>
-                  <Ionicons name="card-outline" size={13} color={colors.textFaint} />
-                  <Text style={s.metaText}>
-                    {tx.method}: {tx.methods[item.methodId] || item.methodId}
-                  </Text>
-                </View>
-                <View style={s.metaRow}>
-                  <Ionicons name="time-outline" size={13} color={colors.textFaint} />
-                  <Text style={s.metaText}>
-                    {tx.created}: {new Date(item.createdAt).toLocaleString(
-                      lang === 'en' ? 'en-GB' : 'id-ID'
-                    )}
-                  </Text>
-                </View>
-
+                <Text style={s.meta}>
+                  {item.booking_date} · {item.start_time}-{item.end_time}
+                </Text>
                 <View style={s.cardFooter}>
                   <View>
-                    <Text style={s.totalLabel}>{tx.total}</Text>
-                    <Text style={s.totalValue}>{formatRupiah(item.total)}</Text>
+                    <Text style={s.totalLabel}>Total</Text>
+                    <Text style={s.totalValue}>
+                      Rp {Number(item.total_amount).toLocaleString('id-ID')}
+                    </Text>
                   </View>
-
-                  {item.status === 'PENDING' ? (
-                    <PressableScale
-                      onPress={() => refreshOne(item.orderId)}
-                      style={s.refreshButton}
-                      scaleTo={0.94}
-                    >
-                      <Ionicons name="refresh" size={13} color={colors.onPrimary} />
-                      <Text style={s.refreshText}>{busy ? tx.checking : tx.refresh}</Text>
-                    </PressableScale>
-                  ) : (
-                    <View style={[s.statusPill, item.status === 'PAID' && s.statusPillPaid]}>
-                      <Ionicons
-                        name={st.icon}
-                        size={14}
-                        color={item.status === 'PAID' ? colors.success : colors.textFaint}
-                      />
-                      <Text
-                        style={[
-                          s.statusPillText,
-                          item.status === 'PAID' && { color: colors.success },
-                        ]}
-                      >
-                        {st.label}
-                      </Text>
-                    </View>
-                  )}
+                  {['pending', 'approved', 'completed'].includes(item.status) ? (
+                    <Tag label={ps.label} tone={ps.tone} />
+                  ) : null}
                 </View>
-              </View>
+              </Pressable>
             </FadeInUp>
           );
         }}
         ListEmptyComponent={
-          <EmptyState icon="receipt-outline" title={tx.empty} hint={tx.emptyHint} />
+          !isOnline ? (
+            <EmptyState
+              icon="cloud-offline-outline"
+              title="Tidak ada koneksi"
+              hint="Sambungkan ke internet lalu pull-to-refresh."
+            />
+          ) : (
+            <EmptyState
+              icon="receipt-outline"
+              title={tab === 'archive' ? 'Belum ada arsip' : 'Belum ada transaksi'}
+              hint={
+                tab === 'archive'
+                  ? 'Transaksi lama (>30 hari) akan muncul di sini.'
+                  : 'Booking yang kamu buat akan muncul di sini.'
+              }
+            />
+          )
         }
       />
     </View>
@@ -241,70 +219,36 @@ export default function TransactionsScreen() {
 }
 
 const makeStyles = (c, t) => ({
-  screen: { flex: 1, backgroundColor: c.base },
-  headerWrap: { gap: spacing.md, marginBottom: spacing.lg },
+  headerWrap: { padding: spacing.lg, gap: spacing.md },
   title: { ...t.display, fontSize: 28 },
-  caption: { ...t.body, marginTop: -spacing.sm },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    height: 46,
-    backgroundColor: c.surface,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: c.line,
+  tabRow: { flexDirection: 'row', gap: spacing.sm },
+  tab: {
+    flex: 1, paddingVertical: spacing.md, alignItems: 'center',
+    borderRadius: radius.pill, borderWidth: 1,
+    borderColor: c.line, backgroundColor: c.surface,
   },
-  searchInput: { flex: 1, color: c.text, fontSize: 14, padding: 0 },
-  list: { padding: spacing.lg, paddingBottom: spacing.xxl * 2 },
-
+  tabActive: { backgroundColor: c.primary, borderColor: c.primary },
+  tabText: { color: c.textMuted, fontSize: 13, fontWeight: '700' },
+  tabTextActive: { color: c.onPrimary },
+  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl * 2 },
   card: {
-    backgroundColor: c.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: c.line,
-    padding: spacing.lg,
-    gap: 6,
+    backgroundColor: c.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: c.line,
+    padding: spacing.lg, gap: 6,
   },
-  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  orderId: { color: c.primary, fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
-  item: { ...t.subtitle, fontSize: 15, lineHeight: 21, marginBottom: 2 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  metaText: { ...t.small, flex: 1 },
-
+  cardTop: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  code: {
+    color: c.primary, fontSize: 13, fontWeight: '900', fontFamily: 'monospace',
+  },
+  item: { ...t.subtitle, fontSize: 15, lineHeight: 21 },
+  meta: { ...t.small, fontSize: 12 },
   cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: c.line,
-    paddingTop: spacing.md,
-    marginTop: spacing.sm,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderTopWidth: 1, borderTopColor: c.line,
+    paddingTop: spacing.md, marginTop: spacing.sm,
   },
   totalLabel: { ...t.small, fontSize: 10 },
   totalValue: { color: c.text, fontSize: 17, fontWeight: '900' },
-
-  refreshButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: c.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 9,
-    borderRadius: radius.pill,
-  },
-  refreshText: { color: c.onPrimary, fontSize: 12, fontWeight: '800' },
-
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    borderRadius: radius.pill,
-    backgroundColor: c.surfaceAlt,
-  },
-  statusPillPaid: { backgroundColor: c.successSoft },
-  statusPillText: { color: c.textFaint, fontSize: 12, fontWeight: '800' },
 });

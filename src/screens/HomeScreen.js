@@ -1,110 +1,134 @@
+// src/screens/HomeScreen.js
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  FlatList,
-  Dimensions,
-  Linking,
-  RefreshControl,
+  View, Text, ScrollView, FlatList, useWindowDimensions, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { useTheme, useThemedStyles, spacing, radius } from '../theme';
 import { useI18n } from '../i18n/i18n';
-import { fetchHomeContent, linkForProgram } from '../api/dispora';
-import {
-  heroQuotes as fallbackQuotes,
-  programs as fallbackPrograms,
-  events,
-  news,
-  athletes as fallbackAthletes,
-  helpdesk,
-  marqueeWords,
-} from '../data/content';
-import { SectionHeading, PrimaryButton, Tag, Skeleton, Notice } from '../components/common';
-import { HeroCard, ProgramCard, EventCard, NewsCard, AthleteCard } from '../components/cards';
-import { LogoMark } from '../components/Logo';
-import SmartImage from '../components/SmartImage';
-import { facilityList } from '../data/facilities';
-import {
-  FadeInUp,
-  PressableScale,
-  AnimatedCounter,
-  LiveDot,
-  stagger,
-} from '../components/anim';
+import { useSettings } from '../context/SettingsContext';
+import { useNetwork } from '../context/NetworkContext';
+import { articlesApi } from '../api/articles';
+import { faqsApi } from '../api/faqs';
+import { heroQuotes as fallbackQuotes } from '../data/content';
 
-const { width } = Dimensions.get('window');
-
-// Angka contoh. Situs Dispora tidak mengekspos endpoint statistik,
-// jadi nilainya statis dan hanya dianimasikan saat muncul.
-const REALTIME_STATS = [
-  { id: 's1', label: 'Aktif saat ini', labelEn: 'Active now', value: 334, unit: 'PAX' },
-  { id: 's2', label: 'Kunjungan hari ini', labelEn: 'Today', value: 8956, unit: 'HITS' },
-  { id: 's3', label: 'Minggu ini', labelEn: 'This week', value: 25863, unit: 'HITS' },
-  { id: 's4', label: 'Bulan ini', labelEn: 'This month', value: 122313, unit: 'HITS' },
-  { id: 's5', label: 'Tahun ini', labelEn: 'This year', value: 4004950, unit: 'HITS' },
-];
+import { SectionHeading, PrimaryButton, Tag, Skeleton } from '../components/common';
+import { HeroCard, NewsCard } from '../components/cards';
+import FaqSection from '../components/FaqSection';
+import QuickWidget from '../components/QuickWidget';
+import HomeHeader from '../components/HomeHeader';
 
 export default function HomeScreen({ navigation }) {
-  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
-  const { t, lang, setLang } = useI18n();
+  const { t, lang } = useI18n();
+  const settings = useSettings();
+  const { isOnline } = useNetwork();
   const s = useThemedStyles(makeStyles);
+  const { width } = useWindowDimensions();
 
-  const [content, setContent] = useState(null);
+  const [articles, setArticles] = useState([]);
+  const [faqs, setFaqs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [quoteIndex, setQuoteIndex] = useState(0);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const load = useCallback(async () => {
+    // Jangan skip kalau online check belum siap — coba saja dulu
     try {
-      const data = await fetchHomeContent();
-      setContent(data);
+      console.log('[Home] load start. isOnline:', isOnline);
+
+      const [artRes, faqRes] = await Promise.allSettled([
+        articlesApi.list(),
+        faqsApi.list(),
+      ]);
+
+      if (artRes.status === 'fulfilled') {
+        const rawArticles = artRes.value?.data || [];
+        const items = rawArticles.map((a) => ({
+          id: a.id,
+          title: a.title,
+          slug: a.slug,
+          excerpt: a.excerpt,
+          content: a.content,
+          body: a.content,
+          thumbnail: a.thumbnail_url || a.thumbnail,
+          image: a.thumbnail_url || a.thumbnail,
+          category: 'Berita',
+          date: a.published_at
+            ? new Date(a.published_at).toLocaleDateString(
+                lang === 'en' ? 'en-GB' : 'id-ID',
+                { day: 'numeric', month: 'long', year: 'numeric' }
+              )
+            : '',
+          published_at: a.published_at,
+        }));
+        console.log('[Home] articles loaded:', items.length);
+        setArticles(items);
+      } else {
+        console.warn('[Home] articles fetch FAILED:', artRes.reason?.message);
+      }
+
+      if (faqRes.status === 'fulfilled') {
+        const faqItems = faqRes.value?.data || [];
+        console.log('[Home] faqs loaded:', faqItems.length);
+        setFaqs(faqItems);
+      } else {
+        console.warn('[Home] faqs fetch FAILED:', faqRes.reason?.message);
+      }
+
+      setHasLoadedOnce(true);
     } catch (e) {
-      setContent({ errors: { all: e } });
+      console.warn('[Home] load error:', e);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [lang, isOnline]);
 
+  // Initial load
   useEffect(() => {
     load();
   }, [load]);
+
+  // ✅ Refetch saat Beranda difokus (pindah tab / kembali ke beranda)
+  useFocusEffect(
+    useCallback(() => {
+      // Skip fetch saat pertama kali karena sudah di-fetch useEffect di atas
+      if (!hasLoadedOnce) return;
+
+      // Kalau data kosong, coba fetch lagi
+      if (articles.length === 0 || faqs.length === 0) {
+        console.log('[Home] focus refetch because data empty');
+        load();
+      }
+    }, [hasLoadedOnce, articles.length, faqs.length, load])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
     load();
   };
 
-  // Pakai data API kalau ada isinya, kalau tidak jatuh ke data lokal.
-  const pickList = (key, fallback) => {
-    const v = content && content[key];
-    return Array.isArray(v) && v.length > 0 ? v : fallback;
-  };
+  const heroArticles = articles.slice(0, 3).map((a) => ({
+    id: a.id,
+    type: 'NEWS',
+    title: a.title,
+    excerpt: a.excerpt,
+    content: a.content,
+    date: a.date,
+    image: a.image,
+    bannerImage: a.image,
+    heroBadge: 'BERITA',
+    heroCtaText: t('common.readMore'),
+    registrationUrl: null,
+  }));
 
-  const hero = (content && content.hero) || [];
-  const programs = pickList('programs', fallbackPrograms);
-  const athletes = pickList('inspiration', fallbackAthletes);
-  const quotes = pickList('quotes', fallbackQuotes);
-  const gallery = (content && content.gallery) || [];
-  const social = (content && content.social) || [];
-
-  const heroFailed = !!(content && content.errors && content.errors.hero);
+  const quotes = settings.whatsappUrl ? [] : fallbackQuotes;
 
   const openHero = (item) => {
-    if (item.registrationUrl) {
-      Linking.openURL(item.registrationUrl).catch(() => {});
-      return;
-    }
-    if (item.heroCtaUrl) {
-      Linking.openURL(item.heroCtaUrl).catch(() => {});
-      return;
-    }
     navigation.navigate('NewsDetail', {
       article: {
         id: item.id,
@@ -112,39 +136,21 @@ export default function HomeScreen({ navigation }) {
         title: item.title,
         date: item.date,
         excerpt: item.excerpt,
-        body: item.content || item.excerpt,
-        image: item.bannerImage || item.image,
-        registrationUrl: item.registrationUrl,
+        content: item.content,
+        body: item.content,
+        image: item.image,
       },
     });
   };
 
-  // Tiap program unggulan punya tautan resminya sendiri.
-  const openProgram = (item) => {
-    const url = item.url || linkForProgram(item.title);
-    if (url) {
-      Linking.openURL(url).catch(() => {});
-      return;
-    }
-    if (item.content) {
-      navigation.navigate('NewsDetail', {
-        article: {
-          id: item.id,
-          category: item.tag,
-          title: item.title,
-          date: '',
-          excerpt: item.description,
-          body: item.content,
-          image: item.image,
-        },
-      });
-    }
-  };
-
   const onQuoteScroll = (e) => {
-    const i = Math.round(e.nativeEvent.contentOffset.x / (width - spacing.lg * 2 + spacing.md));
+    const cardWidth = width - spacing.lg * 2;
+    const i = Math.round(e.nativeEvent.contentOffset.x / (cardWidth + spacing.md));
     if (i !== quoteIndex) setQuoteIndex(i);
   };
+
+  // ✅ Guard: kalau width 0 (belum ready), jangan render hero
+  const isWidthReady = width > 0;
 
   return (
     <ScrollView
@@ -152,54 +158,55 @@ export default function HomeScreen({ navigation }) {
       contentContainerStyle={{ paddingBottom: spacing.xxl * 2 }}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={colors.primary}
+        />
       }
     >
-      {/* Header */}
-      <View style={[s.header, { paddingTop: insets.top + spacing.sm }]}>
-        <View style={s.brandRow}>
-          <LogoMark size={40} />
-          <View>
-            <Text style={s.brandName}>
-              Dispora <Text style={s.brandNameAccent}>Jakarta</Text>
-            </Text>
-            <Text style={s.brandSub}>DKI Jakarta</Text>
-          </View>
-        </View>
-        <View style={s.headerActions}>
-          <Pressable
-            style={s.iconButton}
-            hitSlop={6}
-            onPress={() => setLang(lang === 'id' ? 'en' : 'id')}
-          >
-            <Text style={s.langText}>{lang.toUpperCase()}</Text>
-          </Pressable>
-          <Pressable style={s.iconButton} hitSlop={6} onPress={() => navigation.navigate('Chat')}>
-            <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.text} />
-          </Pressable>
-        </View>
-      </View>
+      <HomeHeader
+        navigation={navigation}
+        onOpenNotifications={() => navigation.navigate('Notifications')}
+      />
 
-      {/* Hero */}
+      {!isOnline ? (
+        <View style={s.offlineWrap}>
+          <Ionicons name="cloud-offline-outline" size={18} color={colors.danger} />
+          <Text style={s.offlineText}>
+            Tidak ada koneksi internet. Tarik ke bawah untuk refresh.
+          </Text>
+        </View>
+      ) : null}
+
+      {settings.tagline ? (
+        <View style={s.taglineBox}>
+          <Ionicons name="sparkles" size={14} color={colors.gold} />
+          <Text style={s.taglineText} numberOfLines={2}>
+            {settings.tagline}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Hero Banner */}
       <View style={s.heroSection}>
         <Text style={s.heroEyebrow}>{t('home.eyebrow')}</Text>
-
         {loading ? (
           <View style={s.heroSkeleton}>
-            <Skeleton height={330} style={{ borderRadius: radius.lg }} />
+            <Skeleton height={200} style={{ borderRadius: radius.lg }} />
           </View>
-        ) : hero.length > 0 ? (
+        ) : heroArticles.length > 0 && isWidthReady ? (
           <FlatList
             horizontal
             pagingEnabled
-            data={hero}
+            data={heroArticles}
             keyExtractor={(item) => String(item.id)}
             showsHorizontalScrollIndicator={false}
             renderItem={({ item }) => (
               <View style={{ width }}>
                 <HeroCard
                   item={item}
-                  ctaLabel={t('home.ctaRegister')}
+                  ctaLabel={t('common.readMore')}
                   onPress={() => openHero(item)}
                 />
               </View>
@@ -207,22 +214,14 @@ export default function HomeScreen({ navigation }) {
           />
         ) : (
           <View style={s.heroFallback}>
-            {heroFailed ? <Notice text={t('common.offline')} tone="gold" /> : null}
             <Text style={s.heroFallbackTitle}>{t('home.heroFallbackTitle')}</Text>
             <Text style={s.heroFallbackBody}>{t('home.heroFallbackBody')}</Text>
-            <View style={s.heroButtons}>
-              <PrimaryButton
-                label={t('home.ctaEvents')}
-                icon="arrow-forward"
-                onPress={() => navigation.navigate('Acara')}
-              />
-              {heroFailed ? (
-                <PrimaryButton label={t('common.retry')} variant="ghost" onPress={load} />
-              ) : null}
-            </View>
           </View>
         )}
       </View>
+
+      {/* Menu Cepat */}
+      <QuickWidget navigation={navigation} />
 
       {/* Kutipan */}
       {quotes.length > 0 ? (
@@ -252,126 +251,11 @@ export default function HomeScreen({ navigation }) {
         </>
       ) : null}
 
-      {/* Pesan cepat */}
-      <View style={s.section}>
-        <SectionHeading
-          title={lang === 'en' ? 'QUICK ' : 'PESAN '}
-          accentWord={lang === 'en' ? 'BOOKING' : 'CEPAT'}
-          caption={
-            lang === 'en'
-              ? 'Pick a venue in West Jakarta and jump straight to the schedule.'
-              : 'Pilih venue di Jakarta Barat lalu langsung ke pemilihan jadwal.'
-          }
-          actionLabel={lang === 'en' ? 'All facilities' : 'Semua fasilitas'}
-          onAction={() => navigation.navigate('Fasilitas')}
-        />
-
-        <View style={s.bookingActions}>
-          <PressableScale
-            onPress={() => navigation.navigate('Fasilitas')}
-            style={[s.bookingAction, s.bookingActionPrimary]}
-            scaleTo={0.96}
-          >
-            <Ionicons name="calendar-outline" size={18} color={colors.onPrimary} />
-            <Text style={s.bookingActionTextPrimary}>
-              {lang === 'en' ? 'Book a venue' : 'Pesan lapangan'}
-            </Text>
-          </PressableScale>
-
-          <PressableScale
-            onPress={() => navigation.navigate('Transactions')}
-            style={s.bookingAction}
-            scaleTo={0.96}
-          >
-            <Ionicons name="receipt-outline" size={18} color={colors.text} />
-            <Text style={s.bookingActionText}>
-              {lang === 'en' ? 'Check status' : 'Cek transaksi'}
-            </Text>
-          </PressableScale>
-        </View>
-
-        <FlatList
-          horizontal
-          data={facilityList.filter((f) => f.ebooking).slice(0, 5)}
-          keyExtractor={(item) => String(item.id)}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.hList}
-          ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
-          renderItem={({ item, index }) => (
-            <FadeInUp delay={stagger(index, 60, 240)}>
-              <PressableScale
-                onPress={() => navigation.navigate('FacilityDetail', { facilityId: item.id })}
-                style={s.bookCard}
-                scaleTo={0.96}
-              >
-                <View style={s.bookIcon}>
-                  <Ionicons name="business" size={18} color={colors.primary} />
-                </View>
-                <Text style={s.bookName} numberOfLines={2}>
-                  {item.name}
-                </Text>
-                <Text style={s.bookArea}>{item.area}</Text>
-                <View style={s.bookMeta}>
-                  <Ionicons name="time-outline" size={11} color={colors.textFaint} />
-                  <Text style={s.bookMetaText}>{item.operationalHours}</Text>
-                </View>
-                <Text style={s.bookPrice}>
-                  {lang === 'en' ? 'From' : 'Mulai'} Rp{' '}
-                  {item.priceFrom.toLocaleString('id-ID')}
-                </Text>
-              </PressableScale>
-            </FadeInUp>
-          )}
-        />
-      </View>
-
-      {/* Program unggulan */}
-      <View style={s.section}>
-        <SectionHeading
-          title={t('home.programs')}
-          accentWord={t('home.programsAccent')}
-          caption={t('home.programsCaption')}
-        />
-        {loading ? (
-          <View style={s.hList}>
-            <Skeleton height={300} style={{ borderRadius: radius.lg }} />
-          </View>
-        ) : (
-          <FlatList
-            horizontal
-            data={programs}
-            keyExtractor={(item) => String(item.id)}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.hList}
-            ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
-            renderItem={({ item }) => (
-              <ProgramCard item={item} onPress={() => openProgram(item)} />
-            )}
-          />
-        )}
-      </View>
-
       {/* Helpdesk */}
       <View style={[s.section, s.helpdesk]}>
         <Tag label="Helpdesk" tone="blue" />
         <Text style={s.helpdeskTitle}>{t('home.helpdesk')}</Text>
         <Text style={s.helpdeskBody}>{t('home.helpdeskBody')}</Text>
-        <View style={s.helpdeskStats}>
-          <View style={s.helpdeskStat}>
-            <Text style={s.helpdeskValue}>{helpdesk.openTicket}</Text>
-            <Text style={s.helpdeskLabel}>Tiket terbuka</Text>
-          </View>
-          <View style={s.helpdeskDivider} />
-          <View style={s.helpdeskStat}>
-            <Text style={s.helpdeskValue}>{helpdesk.avgSla}</Text>
-            <Text style={s.helpdeskLabel}>Rata-rata SLA</Text>
-          </View>
-          <View style={s.helpdeskDivider} />
-          <View style={s.helpdeskStat}>
-            <Text style={s.helpdeskValue}>{helpdesk.channels.length}</Text>
-            <Text style={s.helpdeskLabel}>Channel aktif</Text>
-          </View>
-        </View>
         <PrimaryButton
           label={t('home.openHelpdesk')}
           icon="arrow-forward"
@@ -379,363 +263,93 @@ export default function HomeScreen({ navigation }) {
         />
       </View>
 
-      {/* Kegiatan */}
+      {/* Berita Terkini */}
       <View style={s.section}>
         <SectionHeading
-          title={t('home.activities')}
-          actionLabel={t('home.schedule')}
-          onAction={() => navigation.navigate('Acara')}
-        />
-        <FlatList
-          horizontal
-          data={events}
-          keyExtractor={(item) => String(item.id)}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.hList}
-          ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
-          renderItem={({ item }) => (
-            <EventCard
-              item={item}
-              onPress={() => navigation.navigate('EventDetail', { event: item })}
-            />
-          )}
-        />
-      </View>
-
-      {/* Marquee */}
-      <View style={s.marquee}>
-        {marqueeWords.map((w, i) => (
-          <View key={w} style={s.marqueeItem}>
-            <Text style={s.marqueeText}>{w}</Text>
-            {i < marqueeWords.length - 1 ? <View style={s.marqueeDot} /> : null}
-          </View>
-        ))}
-      </View>
-
-      {/* Profil inspirasi */}
-      <View style={s.section}>
-        <SectionHeading
-          title={t('home.athletes')}
-          accentWord={t('home.athletesAccent')}
-          caption={t('home.athletesCaption')}
-        />
-        <FlatList
-          horizontal
-          data={athletes}
-          keyExtractor={(item) => String(item.id)}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.hList}
-          ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
-          renderItem={({ item }) => <AthleteCard item={item} />}
-        />
-      </View>
-
-      {/* Galeri */}
-      {gallery.length > 0 ? (
-        <View style={s.section}>
-          <SectionHeading title="GALERI" />
-          <FlatList
-            horizontal
-            data={gallery.slice(0, 12)}
-            keyExtractor={(item) => String(item.id)}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.hList}
-            ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
-            renderItem={({ item }) => (
-              <PressableScale
-                onPress={() => (item.link ? Linking.openURL(item.link).catch(() => {}) : null)}
-                style={s.galleryItem}
-                scaleTo={0.94}
-              >
-                <SmartImage uri={item.image} style={s.galleryImage} icon="images-outline" />
-              </PressableScale>
-            )}
-          />
-        </View>
-      ) : null}
-
-      {/* Berita */}
-      <View style={s.section}>
-        <SectionHeading
-          title={t('home.latest')}
+          title={lang === 'en' ? 'LATEST ' : 'BERITA '}
+          accentWord={lang === 'en' ? 'NEWS' : 'TERKINI'}
           actionLabel={t('home.allNews')}
           onAction={() => navigation.navigate('Berita')}
         />
-        <View style={s.newsList}>
-          {news.slice(0, 3).map((item) => (
-            <NewsCard
-              key={item.id}
-              item={item}
-              readLabel={t('common.readMore')}
-              onPress={() => navigation.navigate('NewsDetail', { article: item })}
-            />
-          ))}
-        </View>
-      </View>
-
-      {/* Media sosial */}
-      {social.length > 0 ? (
-        <View style={s.section}>
-          <SectionHeading title="MEDIA SOSIAL" />
-          <FlatList
-            horizontal
-            data={social.slice(0, 8)}
-            keyExtractor={(item) => String(item.id)}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.hList}
-            ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
-            renderItem={({ item }) => (
-              <PressableScale
-                onPress={() => (item.link ? Linking.openURL(item.link).catch(() => {}) : null)}
-                style={s.socialCard}
-              >
-                <SmartImage
-                  uri={item.image}
-                  style={s.socialImage}
-                  icon="logo-instagram"
-                  label={item.handle}
-                />
-                <View style={s.socialBody}>
-                  <Text style={s.socialHandle}>{item.handle}</Text>
-                  <Text style={s.socialText} numberOfLines={3}>
-                    {item.caption}
-                  </Text>
-                </View>
-              </PressableScale>
-            )}
-          />
-        </View>
-      ) : null}
-
-      {/* Trafik realtime */}
-      <View style={s.section}>
-        <View style={s.statsHead}>
-          <View style={{ flex: 1 }}>
-            <SectionHeading title={t('home.stats')} caption={t('home.statsCaption')} />
+        {loading ? (
+          <View style={s.newsList}>
+            <Skeleton height={120} style={{ borderRadius: radius.md }} />
           </View>
-          <View style={s.livePill}>
-            <LiveDot size={7} />
-            <Text style={s.liveText}>LIVE</Text>
-          </View>
-        </View>
-        <View style={s.statsGrid}>
-          {REALTIME_STATS.map((st, i) => (
-            <FadeInUp key={st.id} delay={stagger(i, 70, 350)} style={s.statBox}>
-              <AnimatedCounter
-                value={st.value}
-                delay={stagger(i, 70, 350) + 120}
-                style={s.statValue}
+        ) : articles.length > 0 ? (
+          <View style={s.newsList}>
+            {articles.slice(0, 5).map((item) => (
+              <NewsCard
+                key={item.id}
+                item={item}
+                readLabel={t('common.readMore')}
+                onPress={() => navigation.navigate('NewsDetail', { article: item })}
               />
-              <Text style={s.statUnit}>{st.unit}</Text>
-              <Text style={s.statLabel}>{lang === 'en' ? st.labelEn : st.label}</Text>
-            </FadeInUp>
-          ))}
-        </View>
+            ))}
+          </View>
+        ) : (
+          <View style={s.emptyBox}>
+            <Ionicons name="newspaper-outline" size={28} color={colors.textFaint} />
+            <Text style={s.emptyText}>
+              {lang === 'en' ? 'No news yet' : 'Belum ada berita'}
+            </Text>
+          </View>
+        )}
       </View>
 
-      <Text style={s.copyright}>© 2026 Dinas Pemuda dan Olahraga DKI Jakarta</Text>
+      {/* FAQ */}
+      {faqs.length > 0 ? (
+        <FaqSection
+          faqs={faqs}
+          title={lang === 'en' ? 'Frequently Asked Questions' : 'Pertanyaan Umum'}
+        />
+      ) : null}
     </ScrollView>
   );
 }
 
 const makeStyles = (c, t) => ({
-  screen: { flex: 1, backgroundColor: c.base },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+  screen: { flex: 1, backgroundColor: 'transparent' },
+  offlineWrap: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    marginHorizontal: spacing.lg, marginBottom: spacing.md,
+    paddingVertical: spacing.md, paddingHorizontal: spacing.lg,
+    borderRadius: radius.md, borderWidth: 1,
+    backgroundColor: c.danger + '15', borderColor: c.danger,
   },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  brandName: { color: c.text, fontSize: 17, fontWeight: '900', letterSpacing: -0.3 },
-  brandNameAccent: { color: c.primary },
-  brandSub: { ...t.small, fontSize: 11 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: c.line,
-    alignItems: 'center',
-    justifyContent: 'center',
+  offlineText: { flex: 1, color: c.danger, fontSize: 12, fontWeight: '600' },
+  taglineBox: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    marginHorizontal: spacing.lg, marginBottom: spacing.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.md,
+    borderRadius: radius.md, backgroundColor: c.goldSoft,
   },
-  langText: { color: c.text, fontSize: 12, fontWeight: '800' },
-
+  taglineText: { flex: 1, color: c.gold, fontSize: 12, fontWeight: '700', lineHeight: 17 },
   heroSection: { paddingTop: spacing.sm },
   heroEyebrow: { ...t.eyebrow, paddingHorizontal: spacing.lg, marginBottom: spacing.md },
   heroSkeleton: { paddingHorizontal: spacing.lg },
   heroFallback: { paddingHorizontal: spacing.lg, gap: spacing.md },
   heroFallbackTitle: { ...t.display, fontSize: 28, lineHeight: 34 },
   heroFallbackBody: { ...t.body },
-  heroButtons: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-
   quoteScroll: { paddingHorizontal: spacing.lg, gap: spacing.md },
   quoteCard: {
-    backgroundColor: c.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: c.line,
-    padding: spacing.lg,
-    gap: spacing.sm,
+    backgroundColor: c.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: c.line, padding: spacing.lg, gap: spacing.sm,
   },
   quoteText: { ...t.body, fontStyle: 'italic' },
   quoteName: { ...t.subtitle, fontSize: 15, marginTop: spacing.xs },
   quoteRole: { ...t.small },
-
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: spacing.md },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: c.line },
   dotActive: { width: 18, backgroundColor: c.primary },
-
   section: { marginTop: spacing.xxl },
-
-  bookingActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  bookingAction: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    paddingVertical: 13,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: c.line,
-    backgroundColor: c.surface,
-  },
-  bookingActionPrimary: { backgroundColor: c.primary, borderColor: c.primary },
-  bookingActionText: { color: c.text, fontSize: 13, fontWeight: '800' },
-  bookingActionTextPrimary: { color: c.onPrimary, fontSize: 13, fontWeight: '800' },
-
-  bookCard: {
-    width: 176,
-    backgroundColor: c.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: c.line,
-    padding: spacing.lg,
-    gap: 5,
-  },
-  bookIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.sm,
-    backgroundColor: c.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xs,
-  },
-  bookName: { ...t.subtitle, fontSize: 13, lineHeight: 18 },
-  bookArea: { ...t.small, fontSize: 11 },
-  bookMeta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
-  bookMetaText: { ...t.small, fontSize: 10 },
-  bookPrice: { color: c.gold, fontSize: 12, fontWeight: '900', marginTop: spacing.xs },
-  hList: { paddingHorizontal: spacing.lg },
-
   helpdesk: {
-    marginHorizontal: spacing.lg,
-    backgroundColor: c.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.line,
-    padding: spacing.lg,
-    gap: spacing.md,
+    marginHorizontal: spacing.lg, backgroundColor: c.surface,
+    borderRadius: radius.lg, borderWidth: 1, borderColor: c.line,
+    padding: spacing.lg, gap: spacing.md,
   },
   helpdeskTitle: { ...t.title, fontSize: 20 },
   helpdeskBody: { ...t.body, fontSize: 13 },
-  helpdeskStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: c.base,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-  },
-  helpdeskStat: { flex: 1, alignItems: 'center', gap: 2 },
-  helpdeskDivider: { width: 1, height: 26, backgroundColor: c.line },
-  helpdeskValue: { color: c.text, fontSize: 17, fontWeight: '900' },
-  helpdeskLabel: { ...t.small, fontSize: 10 },
-
-  marquee: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.xxl,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: c.line,
-  },
-  marqueeItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  marqueeText: { color: c.textFaint, fontSize: 13, fontWeight: '900', letterSpacing: 1.6 },
-  marqueeDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: c.primary },
-
-  galleryItem: {
-    width: 130,
-    height: 130,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-    backgroundColor: c.surfaceAlt,
-    borderWidth: 1,
-    borderColor: c.line,
-  },
-  galleryImage: { width: '100%', height: '100%' },
-
   newsList: { paddingHorizontal: spacing.lg, gap: spacing.md },
-
-  socialCard: {
-    width: 260,
-    backgroundColor: c.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.line,
-    overflow: 'hidden',
-  },
-  socialImage: { width: '100%', height: 170, backgroundColor: c.surfaceAlt },
-  socialImageEmpty: { alignItems: 'center', justifyContent: 'center' },
-  socialBody: { padding: spacing.lg, gap: 6 },
-  socialHandle: { color: c.primary, fontSize: 13, fontWeight: '800' },
-  socialText: { ...t.body, fontSize: 13 },
-
-  statsHead: { flexDirection: 'row', alignItems: 'flex-start', paddingRight: spacing.lg },
-  livePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-    backgroundColor: c.successSoft,
-  },
-  liveText: { color: c.success, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
-
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-  },
-  statBox: {
-    flexGrow: 1,
-    flexBasis: '45%',
-    backgroundColor: c.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: c.line,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-  },
-  statValue: { color: c.text, fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
-  statUnit: { color: c.primary, fontSize: 11, fontWeight: '700', marginTop: 1 },
-  statLabel: { ...t.small, marginTop: spacing.xs },
-
-  copyright: { ...t.small, textAlign: 'center', marginTop: spacing.xxl },
+  emptyBox: { alignItems: 'center', paddingVertical: spacing.xxl, gap: spacing.sm },
+  emptyText: { ...t.small, fontSize: 12 },
 });

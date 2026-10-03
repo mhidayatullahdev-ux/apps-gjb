@@ -1,22 +1,43 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable, Switch, Linking, Alert } from 'react-native';
+// src/screens/MoreScreen.js
+import React, { useState } from 'react';
+import { View, Text, ScrollView, Pressable, Switch, Linking, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme, useThemedStyles, spacing, radius } from '../theme';
 import { useI18n } from '../i18n/i18n';
 import { useAuth } from '../context/AuthContext';
-import { contact, quickLinks } from '../data/content';
+import { useSettings } from '../context/SettingsContext';
 import { Divider, PrimaryButton } from '../components/common';
+import ConfirmModal from '../components/ConfirmModal';
+
+const SOCIAL_ICONS = {
+  instagram: 'logo-instagram',
+  facebook: 'logo-facebook',
+  x: 'logo-twitter',
+  twitter: 'logo-twitter',
+  youtube: 'logo-youtube',
+  tiktok: 'musical-notes-outline',
+};
 
 export default function MoreScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { colors, isDark, preference, setPreference, toggle } = useTheme();
   const { t, lang, setLang } = useI18n();
   const { user, isLoggedIn, logout } = useAuth();
+  const settings = useSettings();
   const s = useThemedStyles(makeStyles);
 
+  const [logoutModal, setLogoutModal] = useState(false);
+
   const services = [
+    {
+      id: 'profile',
+      icon: 'person-circle-outline',
+      title: t('menu.editProfile'),
+      desc: t('menu.editProfileDesc'),
+      onPress: () => navigation.navigate('EditProfile'),
+    },
     {
       id: 'chat',
       icon: 'chatbubble-ellipses-outline',
@@ -34,25 +55,44 @@ export default function MoreScreen({ navigation }) {
     {
       id: 'transactions',
       icon: 'receipt-outline',
-      title: lang === 'en' ? 'My transactions' : 'Transaksi saya',
-      desc: lang === 'en' ? 'Booking & payment status' : 'Status pemesanan & pembayaran',
+      title: t('menu.transactions'),
+      desc: t('menu.transactionsDesc'),
       onPress: () => navigation.navigate('Transactions'),
     },
     {
-      id: 'payment',
-      icon: 'card-outline',
-      title: t('more.payment'),
-      desc: t('more.paymentDesc'),
-      onPress: () => navigation.navigate('Fasilitas'),
+      id: 'privacy',
+      icon: 'shield-checkmark-outline',
+      title: 'Kebijakan Privasi',
+      desc: 'Cara kami melindungi data Anda',
+      onPress: () => navigation.navigate('PrivacyPolicy'),
     },
   ];
 
-  const confirmLogout = () => {
-    Alert.alert(t('more.logout'), '?', [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('more.logout'), style: 'destructive', onPress: logout },
-    ]);
+  const contactInfo = settings.contact || {};
+  const socialInfo = settings.social || {};
+
+  const socialList = [
+    { id: 'instagram', label: 'Instagram', value: socialInfo.instagram },
+    { id: 'facebook', label: 'Facebook', value: socialInfo.facebook },
+    { id: 'x', label: 'X / Twitter', value: socialInfo.x },
+    { id: 'youtube', label: 'YouTube', value: socialInfo.youtube },
+    { id: 'tiktok', label: 'TikTok', value: socialInfo.tiktok },
+  ].filter((so) => !!so.value);
+
+  const openWhatsApp = () => {
+    const num = contactInfo.whatsapp
+      ? String(contactInfo.whatsapp).replace(/\D/g, '')
+      : null;
+    if (!num) return;
+    Linking.openURL(`https://wa.me/${num}`).catch(() => {});
   };
+
+  const avatarUri = (() => {
+    const url = user?.avatar_url;
+    if (!url) return null;
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}t=${user?.updated_at || Date.now()}`;
+  })();
 
   return (
     <ScrollView
@@ -70,7 +110,13 @@ export default function MoreScreen({ navigation }) {
           <>
             <View style={s.userRow}>
               <View style={s.avatar}>
-                <Text style={s.avatarText}>{(user.name || '?').charAt(0).toUpperCase()}</Text>
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={s.avatarImg} />
+                ) : (
+                  <Text style={s.avatarText}>
+                    {(user.name || '?').charAt(0).toUpperCase()}
+                  </Text>
+                )}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.userName}>{user.name}</Text>
@@ -78,7 +124,7 @@ export default function MoreScreen({ navigation }) {
               </View>
             </View>
             <Divider />
-            <Pressable onPress={confirmLogout} style={s.rowButton}>
+            <Pressable onPress={() => setLogoutModal(true)} style={s.rowButton}>
               <Ionicons name="log-out-outline" size={18} color={colors.danger} />
               <Text style={[s.rowButtonText, { color: colors.danger }]}>{t('more.logout')}</Text>
             </Pressable>
@@ -169,99 +215,138 @@ export default function MoreScreen({ navigation }) {
         })}
       </View>
 
-      {/* Tautan cepat */}
-      <View style={s.grid}>
-        {quickLinks.map((l) => (
-          <Pressable key={l.id} style={s.tile} onPress={() => {}}>
-            <View style={s.tileIcon}>
-              <Ionicons name={l.icon} size={19} color={colors.primary} />
-            </View>
-            <Text style={s.tileLabel}>{l.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-
       {/* Kontak */}
-      <Text style={s.sectionLabel}>{t('more.contact')}</Text>
-      <View style={s.card}>
-        <View style={s.contactBox}>
-          <Text style={s.office}>{contact.office}</Text>
-          <View style={s.metaRow}>
-            <Ionicons name="location-outline" size={16} color={colors.textFaint} />
-            <Text style={s.metaText}>{contact.address}</Text>
+      {(contactInfo.address || contactInfo.email || contactInfo.phone) ? (
+        <>
+          <Text style={s.sectionLabel}>{t('more.contact')}</Text>
+          <View style={s.card}>
+            <View style={s.contactBox}>
+              <Text style={s.office}>{t('more.office')}</Text>
+
+              {contactInfo.address ? (
+                <View style={s.metaRow}>
+                  <Ionicons name="location-outline" size={16} color={colors.textFaint} />
+                  <Text style={s.metaText}>{contactInfo.address}</Text>
+                </View>
+              ) : null}
+
+              {contactInfo.phone ? (
+                <Pressable
+                  style={s.metaRow}
+                  onPress={() => Linking.openURL(`tel:${contactInfo.phone}`).catch(() => {})}
+                >
+                  <Ionicons name="call-outline" size={16} color={colors.textFaint} />
+                  <Text style={[s.metaText, s.link]}>{contactInfo.phone}</Text>
+                </Pressable>
+              ) : null}
+
+              {contactInfo.email ? (
+                <Pressable
+                  style={s.metaRow}
+                  onPress={() => Linking.openURL(`mailto:${contactInfo.email}`).catch(() => {})}
+                >
+                  <Ionicons name="mail-outline" size={16} color={colors.textFaint} />
+                  <Text style={[s.metaText, s.link]}>{contactInfo.email}</Text>
+                </Pressable>
+              ) : null}
+
+              {contactInfo.whatsapp ? (
+                <Pressable style={s.metaRow} onPress={openWhatsApp}>
+                  <Ionicons name="logo-whatsapp" size={16} color={colors.textFaint} />
+                  <Text style={[s.metaText, s.link]}>{contactInfo.whatsapp}</Text>
+                </Pressable>
+              ) : null}
+            </View>
           </View>
-          <Pressable
-            style={s.metaRow}
-            onPress={() => Linking.openURL(`mailto:${contact.email}`)}
-          >
-            <Ionicons name="mail-outline" size={16} color={colors.textFaint} />
-            <Text style={[s.metaText, s.link]}>{contact.email}</Text>
-          </Pressable>
-        </View>
-      </View>
+        </>
+      ) : null}
 
       {/* Sosial */}
-      <Text style={s.sectionLabel}>{t('more.social')}</Text>
-      <View style={s.card}>
-        {contact.socials.map((so, i) => (
-          <View key={so.id}>
-            <View style={s.serviceRow}>
-              <Ionicons name={so.icon} size={18} color={colors.primary} />
-              <View style={{ flex: 1 }}>
-                <Text style={s.serviceTitle}>{so.platform}</Text>
-                <Text style={s.serviceDesc}>{so.label}</Text>
+      {socialList.length > 0 ? (
+        <>
+          <Text style={s.sectionLabel}>{t('more.social')}</Text>
+          <View style={s.card}>
+            {socialList.map((so, i) => (
+              <View key={so.id}>
+                <Pressable
+                  style={s.serviceRow}
+                  onPress={() => {
+                    const url = so.value.startsWith('http') ? so.value : `https://${so.value}`;
+                    Linking.openURL(url).catch(() => {});
+                  }}
+                >
+                  <Ionicons
+                    name={SOCIAL_ICONS[so.id] || 'link-outline'}
+                    size={18}
+                    color={colors.primary}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.serviceTitle}>{so.label}</Text>
+                    <Text style={s.serviceDesc} numberOfLines={1}>{so.value}</Text>
+                  </View>
+                  <Ionicons name="open-outline" size={15} color={colors.textFaint} />
+                </Pressable>
+                {i < socialList.length - 1 ? <Divider /> : null}
               </View>
-              <Ionicons name="chevron-forward" size={15} color={colors.textFaint} />
-            </View>
-            {i < contact.socials.length - 1 ? <Divider /> : null}
+            ))}
           </View>
-        ))}
-      </View>
+        </>
+      ) : null}
 
-      <Text style={s.footer}>{t('more.demoNote')}</Text>
+      {/* ✅ Modal logout proper */}
+      <ConfirmModal
+        visible={logoutModal}
+        title={t('more.logout')}
+        message={t('more.logoutConfirm')}
+        confirmLabel={t('more.logout')}
+        cancelLabel={t('common.cancel')}
+        icon="log-out-outline"
+        tone="danger"
+        onCancel={() => setLogoutModal(false)}
+        onConfirm={() => {
+          setLogoutModal(false);
+          setTimeout(() => logout(), 200);
+        }}
+      />
     </ScrollView>
   );
 }
 
 const makeStyles = (c, t) => ({
-  screen: { flex: 1, backgroundColor: c.base },
+  screen: { flex: 1, backgroundColor: 'transparent' },
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl * 2 },
   title: { ...t.display, fontSize: 28 },
   caption: { ...t.body, marginTop: spacing.xs },
 
   sectionLabel: {
-    ...t.eyebrow,
-    color: c.textFaint,
-    marginTop: spacing.xl,
-    marginBottom: spacing.md,
+    ...t.eyebrow, color: c.textFaint,
+    marginTop: spacing.xl, marginBottom: spacing.md,
   },
 
   card: {
-    backgroundColor: c.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: c.line,
+    backgroundColor: c.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: c.line,
     paddingHorizontal: spacing.lg,
   },
 
-  userRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.lg },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: c.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+  userRow: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: spacing.md, paddingVertical: spacing.lg,
   },
+  avatar: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: c.primary,
+    alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImg: { width: '100%', height: '100%' },
   avatarText: { color: c.onPrimary, fontSize: 18, fontWeight: '900' },
   userName: { ...t.subtitle, fontSize: 15 },
   userMeta: { ...t.small },
 
   rowButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.lg,
+    flexDirection: 'row', alignItems: 'center',
+    gap: spacing.md, paddingVertical: spacing.lg,
   },
   rowButtonText: { fontSize: 14, fontWeight: '700' },
 
@@ -270,70 +355,36 @@ const makeStyles = (c, t) => ({
   authButtons: { flexDirection: 'row', gap: spacing.sm },
 
   serviceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.lg,
+    flexDirection: 'row', alignItems: 'center',
+    gap: spacing.md, paddingVertical: spacing.lg,
   },
   serviceIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.sm,
+    width: 38, height: 38, borderRadius: radius.sm,
     backgroundColor: c.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
   serviceTitle: { ...t.subtitle, fontSize: 14 },
   serviceDesc: { ...t.small },
 
   switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
+    flexDirection: 'row', alignItems: 'center',
+    gap: spacing.md, paddingVertical: spacing.md,
   },
   switchLabel: { ...t.subtitle, fontSize: 14, flex: 1 },
 
   langRow: { flexDirection: 'row', gap: spacing.sm },
   langChip: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: c.line,
+    flex: 1, alignItems: 'center', paddingVertical: spacing.md,
+    borderRadius: radius.md, borderWidth: 1, borderColor: c.line,
     backgroundColor: c.surface,
   },
   langChipActive: { backgroundColor: c.primary, borderColor: c.primary },
   langChipText: { color: c.textMuted, fontSize: 13, fontWeight: '700' },
   langChipTextActive: { color: c.onPrimary },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: spacing.xl },
-  tile: {
-    width: '47%',
-    flexGrow: 1,
-    backgroundColor: c.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: c.line,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  tileIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.sm,
-    backgroundColor: c.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tileLabel: { ...t.subtitle, fontSize: 14 },
-
   contactBox: { paddingVertical: spacing.lg, gap: spacing.md },
   office: { ...t.subtitle, fontSize: 15 },
   metaRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
   metaText: { ...t.body, flex: 1, fontSize: 13 },
   link: { color: c.gold, fontWeight: '700' },
-
-  footer: { ...t.small, textAlign: 'center', marginTop: spacing.xxl },
 });

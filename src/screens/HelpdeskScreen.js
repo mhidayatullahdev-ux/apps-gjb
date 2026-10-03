@@ -1,155 +1,124 @@
+// src/screens/HelpdeskScreen.js
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, RefreshControl, Pressable, ScrollView } from 'react-native';
+import { View, Text, FlatList, RefreshControl, Pressable, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme, useThemedStyles, spacing, radius } from '../theme';
-import { useI18n } from '../i18n/i18n';
-import { fetchHelpdeskTickets } from '../api/dispora';
-import { TicketCard } from '../components/cards';
-import { EmptyState, Loader, Notice, PrimaryButton } from '../components/common';
+import { useSettings } from '../context/SettingsContext';
+import { useNetwork } from '../context/NetworkContext';
+import { chatApi } from '../api/chat';
+import { EmptyState, Loader, PrimaryButton } from '../components/common';
 import { FadeInUp, stagger } from '../components/anim';
+import OfflineNotice from '../components/OfflineNotice';
 
-const SAMPLE_TICKETS = [
-  {
-    id: 1042,
-    ticketNumber: 'HD-2026-1042',
-    subject: 'Kendala login akun POPB',
-    message: 'Sudah daftar tapi tidak bisa masuk, muncul pesan email belum terverifikasi.',
-    name: 'Andi Pratama',
-    status: 'OPEN',
-    createdAt: '2026-09-05T08:12:00.000Z',
-  },
-  {
-    id: 1041,
-    ticketNumber: 'HD-2026-1041',
-    subject: 'Permohonan peralatan olahraga lewat Sidasi',
-    message: 'Ingin menanyakan status pengajuan bola voli untuk klub di Jakarta Barat.',
-    name: 'Klub Voli Kembangan',
-    status: 'IN_PROGRESS',
-    createdAt: '2026-09-04T02:40:00.000Z',
-  },
-  {
-    id: 1039,
-    ticketNumber: 'HD-2026-1039',
-    subject: 'Jadwal pemakaian GOR Ciracas',
-    message: 'Apakah slot akhir pekan masih tersedia untuk bulan depan?',
-    name: 'Rina Kusuma',
-    status: 'CLOSED',
-    createdAt: '2026-09-01T11:05:00.000Z',
-  },
-];
-
-const FILTERS = ['ALL', 'OPEN', 'IN_PROGRESS', 'CLOSED'];
-
-export default function HelpdeskScreen() {
+export default function HelpdeskScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
-  const { t } = useI18n();
   const s = useThemedStyles(makeStyles);
+  const { whatsappUrl } = useSettings();
+  const { isOnline } = useNetwork();
 
-  const [tickets, setTickets] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [usingSample, setUsingSample] = useState(false);
-  const [filter, setFilter] = useState('ALL');
 
   const load = useCallback(async () => {
+    if (!isOnline) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     try {
-      const data = await fetchHelpdeskTickets();
-      if (Array.isArray(data) && data.length > 0) {
-        setTickets(data);
-        setUsingSample(false);
-      } else {
-        setTickets(SAMPLE_TICKETS);
-        setUsingSample(true);
-      }
-    } catch (e) {
-      setTickets(SAMPLE_TICKETS);
-      setUsingSample(true);
+      const res = await chatApi.messages();
+      setMessages(res.messages || []);
+    } catch {
+      setMessages([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [isOnline]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
-  const filtered =
-    filter === 'ALL'
-      ? tickets
-      : tickets.filter((x) => String(x.status || '').toUpperCase().includes(filter));
-
-  const labelFor = (f) => {
-    if (f === 'ALL') return t('common.all');
-    if (f === 'OPEN') return t('helpdesk.open');
-    if (f === 'IN_PROGRESS') return t('helpdesk.pending');
-    return t('helpdesk.closed');
-  };
-
-  if (loading) return <Loader label={t('common.loading')} />;
-
-  const header = (
-    <View style={s.headerWrap}>
-      <Text style={s.caption}>{t('helpdesk.caption')}</Text>
-      {usingSample ? (
-        <Notice text={t('helpdesk.authError')} tone="gold" icon="lock-closed-outline" />
-      ) : null}
-
-      <View style={s.chipsRow}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.chips}
-        >
-          {FILTERS.map((f) => {
-            const active = f === filter;
-            return (
-              <Pressable
-                key={f}
-                onPress={() => setFilter(f)}
-                style={[s.chip, active && s.chipActive]}
-              >
-                <Text style={[s.chipText, active && s.chipTextActive]}>{labelFor(f)}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
-    </View>
-  );
+  if (loading) return <Loader />;
 
   return (
     <View style={s.screen}>
+      <View style={[s.header, { paddingTop: insets.top + spacing.sm }]}>
+        <Text style={s.title}>Helpdesk</Text>
+        <Text style={s.caption}>Hubungi kami untuk bantuan booking & pembayaran.</Text>
+
+        <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
+          <PrimaryButton
+            label="Buka Live Chat"
+            icon="chatbubble-ellipses-outline"
+            disabled={!isOnline}
+            onPress={() => navigation.navigate('Chat')}
+          />
+          {whatsappUrl ? (
+            <PrimaryButton
+              label="Chat WhatsApp"
+              variant="ghost"
+              icon="logo-whatsapp"
+              disabled={!isOnline}
+              onPress={() => Linking.openURL(whatsappUrl).catch(() => {})}
+            />
+          ) : null}
+        </View>
+      </View>
+
+      <OfflineNotice style={{ marginHorizontal: spacing.lg }} />
+
+      <Text style={s.sectionLabel}>RIWAYAT CHAT</Text>
       <FlatList
-        data={filtered}
-        keyExtractor={(item, i) => String(item.id ?? item.ticketNumber ?? i)}
-        ListHeaderComponent={header}
+        data={messages}
+        keyExtractor={(item) => String(item.id)}
         contentContainerStyle={[s.list, { paddingBottom: insets.bottom + spacing.xxl }]}
-        ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item, index }) => (
-          <FadeInUp delay={stagger(index)}>
-            <TicketCard item={item} />
-          </FadeInUp>
-        )}
+        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              load();
-            }}
+            enabled={isOnline}
+            onRefresh={() => { setRefreshing(true); load(); }}
             tintColor={colors.primary}
           />
         }
+        renderItem={({ item, index }) => (
+          <FadeInUp delay={stagger(index)}>
+            <View style={[s.msgCard, item.sender_type === 'admin' && s.msgCardAdmin]}>
+              <View style={s.msgHeader}>
+                <Ionicons
+                  name={item.sender_type === 'admin' ? 'shield-checkmark' : 'person'}
+                  size={14}
+                  color={item.sender_type === 'admin' ? colors.primary : colors.textFaint}
+                />
+                <Text style={s.msgSender}>
+                  {item.sender_type === 'admin' ? 'Admin' : 'Anda'}
+                </Text>
+                <Text style={s.msgTime}>
+                  {new Date(item.created_at).toLocaleString('id-ID')}
+                </Text>
+              </View>
+              <Text style={s.msgText}>{item.message}</Text>
+            </View>
+          </FadeInUp>
+        )}
         ListEmptyComponent={
-          <EmptyState
-            icon="ticket-outline"
-            title={t('helpdesk.empty')}
-            action={<PrimaryButton label={t('common.retry')} variant="ghost" onPress={load} />}
-          />
+          !isOnline ? (
+            <EmptyState
+              icon="cloud-offline-outline"
+              title="Tidak ada koneksi"
+              hint="Sambungkan ke internet lalu pull-to-refresh."
+            />
+          ) : (
+            <EmptyState
+              icon="chatbubble-outline"
+              title="Belum ada chat"
+              hint="Mulai percakapan dengan admin lewat tombol di atas."
+            />
+          )
         }
       />
     </View>
@@ -157,22 +126,22 @@ export default function HelpdeskScreen() {
 }
 
 const makeStyles = (c, t) => ({
-  screen: { flex: 1, backgroundColor: c.base },
-  headerWrap: { gap: spacing.md, marginBottom: spacing.lg },
-  caption: { ...t.body },
-  chipsRow: { height: 38 },
-  chips: { gap: spacing.sm, alignItems: 'center' },
-  chip: {
-    paddingHorizontal: spacing.md,
-    height: 34,
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: c.line,
-    backgroundColor: c.surface,
+  screen: { flex: 1, backgroundColor: 'transparent' },
+  header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
+  title: { ...t.display, fontSize: 28 },
+  caption: { ...t.body, marginTop: spacing.xs },
+  sectionLabel: {
+    ...t.eyebrow, color: c.textFaint,
+    paddingHorizontal: spacing.lg, marginBottom: spacing.md,
   },
-  chipActive: { backgroundColor: c.primary, borderColor: c.primary },
-  chipText: { color: c.textMuted, fontSize: 12, fontWeight: '700' },
-  chipTextActive: { color: c.onPrimary },
-  list: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
+  list: { paddingHorizontal: spacing.lg },
+  msgCard: {
+    backgroundColor: c.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: c.line, padding: spacing.md, gap: 6,
+  },
+  msgCardAdmin: { backgroundColor: c.primarySoft, borderColor: c.primary },
+  msgHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  msgSender: { ...t.subtitle, fontSize: 12, flex: 1 },
+  msgTime: { ...t.small, fontSize: 10 },
+  msgText: { ...t.body, fontSize: 13 },
 });

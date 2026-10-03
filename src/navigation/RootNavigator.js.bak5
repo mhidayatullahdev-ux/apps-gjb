@@ -1,0 +1,98 @@
+// src/navigation/RootNavigator.js
+import React from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+
+import { useTheme } from '../theme';
+import { useI18n } from '../i18n/i18n';
+import { useAuth } from '../context/AuthContext';
+import analytics from '../utils/analytics';
+
+import FloatingTabBar from '../components/FloatingTabBar';
+
+// Screens
+import WelcomeScreen from '../screens/WelcomeScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import HomeScreen from '../screens/HomeScreen';
+import FacilitiesScreen from '../screens/FacilitiesScreen';
+import FacilityDetailScreen from '../screens/FacilityDetailScreen';
+import NewsScreen from '../screens/NewsScreen';
+import NewsDetailScreen from '../screens/NewsDetailScreen';
+import MoreScreen from '../screens/MoreScreen';
+import ChatScreen from '../screens/ChatScreen';
+import HelpdeskScreen from '../screens/HelpdeskScreen';
+import PaymentScreen from '../screens/PaymentScreen';
+import TransactionsScreen from '../screens/TransactionsScreen';
+import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
+import ProfileCompleteScreen from '../screens/ProfileCompleteScreen';
+import BookingFormScreen from '../screens/BookingFormScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import RescheduleScreen from '../screens/RescheduleScreen';
+import FavoritesScreen from '../screens/FavoritesScreen';
+
+const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
+
+function Tabs() {
+  return (
+    <Tab.Navigator
+      tabBar={(props) => <FloatingTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
+    >
+      <Tab.Screen name="Beranda" component={HomeScreen} />
+      <Tab.Screen name="Fasilitas" component={FacilitiesScreen} />
+      <Tab.Screen name="Helpdesk" component={HelpdeskScreen} />
+      <Tab.Screen name="Berita" component={NewsScreen} />
+      <Tab.Screen name="Lainnya" component={MoreScreen} />
+    </Tab.Navigator>
+  );
+}
+
+function GuestStack() {
+
+  const base = isDark ? DarkTheme : DefaultTheme;
+  const navTheme = {
+    ...base,
+    dark: isDark,
+    colors: {
+      ...base.colors,
+      primary: colors.primary,
+      background: colors.base,
+      card: colors.base,
+      text: colors.text,
+      border: colors.line,
+      notification: colors.primary,
+    },
+  };
+
+  if (!ready || onboardingLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.base,
+        }}
+      >
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
+  }
+
+  return (
+    <NavigationContainer theme={navTheme} onStateChange={onNavigationStateChange}>
+      {!isLoggedIn ? (
+        <GuestStack />
+      ) : !isProfileComplete ? (
+        <ProfileSetupStack />
+      ) : (
+        <AppStack />
+      )}
+    </NavigationContainer>
+  );
+}

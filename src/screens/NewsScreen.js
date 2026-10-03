@@ -1,50 +1,63 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, FlatList, TextInput, Pressable } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, FlatList, TextInput, Pressable, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { useTheme, useThemedStyles, spacing, radius } from '../theme';
-import { useI18n } from '../i18n/i18n';
-import { news } from '../data/content';
+import { articlesApi } from '../api/articles';
 import { NewsCard } from '../components/cards';
-import { EmptyState } from '../components/common';
+import { EmptyState, Loader } from '../components/common';
 import { FadeInUp, stagger } from '../components/anim';
 
 export default function NewsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
-  const { t } = useI18n();
   const s = useThemedStyles(makeStyles);
-  const [query, setQuery] = useState('');
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return news;
-    return news.filter(
-      (n) => n.title.toLowerCase().includes(q) || n.excerpt.toLowerCase().includes(q)
-    );
-  }, [query]);
+  const [query, setQuery] = useState('');
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await articlesApi.list();
+      const items = (res.data || []).map((a) => ({
+        id: a.id,
+        title: a.title,
+        excerpt: a.excerpt,
+        category: 'Berita',
+        date: a.published_at
+          ? new Date(a.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+          : '',
+        image: a.thumbnail,
+      }));
+      setList(items);
+    } catch { setList([]); }
+    finally { setLoading(false); setRefreshing(false); }
+  }, []);
+
+  // Auto reload tiap kali tab difokuskan
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const filtered = list.filter((n) =>
+    !query.trim() || n.title.toLowerCase().includes(query.toLowerCase())
+  );
+
+  if (loading) return <Loader />;
 
   const header = (
     <View style={s.headerWrap}>
-      <Text style={s.title}>{t('news.title')}</Text>
-      <Text style={s.caption}>{t('news.caption')}</Text>
-
+      <Text style={s.title}>Berita</Text>
       <View style={s.searchBox}>
         <Ionicons name="search" size={17} color={colors.textFaint} />
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder={t('news.searchPlaceholder')}
-          placeholderTextColor={colors.textFaint}
-          style={s.searchInput}
-          returnKeyType="search"
-        />
-        {query ? (
-          <Pressable onPress={() => setQuery('')} hitSlop={8}>
-            <Ionicons name="close-circle" size={17} color={colors.textFaint} />
-          </Pressable>
-        ) : null}
+        <TextInput value={query} onChangeText={setQuery} placeholder="Cari berita..."
+          placeholderTextColor={colors.textFaint} style={s.searchInput} />
       </View>
     </View>
   );
@@ -57,40 +70,27 @@ export default function NewsScreen({ navigation }) {
         ListHeaderComponent={header}
         contentContainerStyle={s.list}
         ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); load(); }} tintColor={colors.primary} />
+        }
         renderItem={({ item, index }) => (
           <FadeInUp delay={stagger(index)}>
-            <NewsCard
-              item={item}
-              readLabel={t('common.readMore')}
-              onPress={() => navigation.navigate('NewsDetail', { article: item })}
-            />
+            <NewsCard item={item} readLabel="Baca selengkapnya"
+              onPress={() => navigation.navigate('NewsDetail', { article: item })} />
           </FadeInUp>
         )}
-        ListEmptyComponent={<EmptyState icon="newspaper-outline" title={t('news.empty')} />}
+        ListEmptyComponent={<EmptyState icon="newspaper-outline" title="Tidak ada berita" />}
       />
     </View>
   );
 }
 
 const makeStyles = (c, t) => ({
-  screen: { flex: 1, backgroundColor: c.base },
-  headerWrap: { gap: spacing.xs, marginBottom: spacing.lg },
+  screen: { flex: 1, backgroundColor: 'transparent' },
+  headerWrap: { gap: spacing.md, marginBottom: spacing.lg },
   title: { ...t.display, fontSize: 28 },
-  caption: { ...t.body },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    height: 46,
-    backgroundColor: c.surface,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: c.line,
-    marginTop: spacing.md,
-  },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, height: 46, backgroundColor: c.surface, borderRadius: radius.pill, borderWidth: 1, borderColor: c.line },
   searchInput: { flex: 1, color: c.text, fontSize: 14, padding: 0 },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl * 2 },
 });

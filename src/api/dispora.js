@@ -1,109 +1,39 @@
-// Lapisan akses data Dispora.
-//
-// Endpoint publik yang terverifikasi (GET, balas JSON):
-//   /api/news/hero    pengumuman utama
-//   /api/programs     program unggulan
-//   /api/inspiration  profil atlet inspiratif
-//   /api/quotes       kutipan tokoh  -> {success, quotes:[...]}
-//   /api/gallery      galeri foto
-//   /api/social       postingan media sosial
-//   /api/chatbot/chat live chat (POST saja)
-//
-// Rute seperti /api/programs/[id] membalas 405 untuk GET, jadi tidak dipakai.
+// Bridge — menyediakan API lama (fetchHomeContent, sendChatMessage, dll)
+// tapi diarahkan ke backend Laravel baru.
+// Screens lama tetap jalan tanpa perlu diubah satu-satu.
 
-export const BASE_URL = 'https://dispora.jakarta.go.id';
+import api from './client';
 
-export const ENDPOINTS = {
-  hero: '/api/news/hero',
-  programs: '/api/programs',
-  inspiration: '/api/inspiration',
-  quotes: '/api/quotes',
-  gallery: '/api/gallery',
-  social: '/api/social',
-  chatbot: '/api/chatbot/chat',
-  helpdeskTickets: '/admin/api/helpdesk/tickets?limit=100',
-};
+export const BASE_URL = 'https://service-gor.84.247.188.148.sslip.io';
 
-const TIMEOUT_MS = 15000;
-
-async function request(path, options = {}) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), options.timeout || TIMEOUT_MS);
-
-  try {
-    const res = await fetch(`${BASE_URL}${path}`, {
-      ...options,
-      signal: controller.signal,
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        ...(options.headers || {}),
-      },
-    });
-
-    const text = await res.text();
-    let data = null;
-    try {
-      data = text ? JSON.parse(text) : null;
-    } catch (e) {
-      data = null;
-    }
-
-    if (!res.ok) {
-      const err = new Error(`HTTP ${res.status}`);
-      err.status = res.status;
-      err.data = data;
-      throw err;
-    }
-    return data;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-// Beberapa endpoint membalas array polos, sebagian dibungkus objek.
-function toArray(data, ...keys) {
-  if (Array.isArray(data)) return data;
-  if (!data || typeof data !== 'object') return [];
-  for (const k of keys) {
-    if (Array.isArray(data[k])) return data[k];
-  }
-  if (Array.isArray(data.data)) return data.data;
-  return [];
-}
+// ---------- Helper umum ----------
 
 export function cleanText(value) {
   if (!value) return '';
-  return String(value).replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  return String(value)
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
-function stripQuotes(value) {
-  return cleanText(value).replace(/^["“”']+|["“”']+$/g, '');
-}
-
+const stripQuotes = (v) => cleanText(v).replace(/^["“”']+|["“”']+$/g, '');
 const pick = (obj, ...keys) => {
-  for (const k of keys) {
-    if (obj && obj[k]) return obj[k];
-  }
+  for (const k of keys) if (obj && obj[k]) return obj[k];
   return null;
 };
 
-// ---------- Normalisasi ----------
-// Struktur balasan API belum terdokumentasi, jadi tiap field dicari
-// di beberapa nama yang mungkin dipakai.
-
-const ACCENTS = ['primary', 'blue', 'gold'];
-
-// Tautan resmi tiap program unggulan.
+// Mapping nama program → link resmi (opsional)
 const PROGRAM_LINKS = [
   ['jkt sport', 'https://ppop-dispora.jakarta.go.id/'],
-  ['jktsport', 'https://ppop-dispora.jakarta.go.id/'],
   ['ppop', 'https://ppop-dispora.jakarta.go.id/'],
   ['sidasi', 'https://sidasi-dispora.jakarta.go.id/'],
   ['rekomtek', 'https://dispora.jakarta.go.id/rekomtek'],
   ['e-booking', 'https://dispora.jakarta.go.id/facilities'],
-  ['ebooking', 'https://dispora.jakarta.go.id/facilities'],
-  ['booking', 'https://dispora.jakarta.go.id/facilities'],
   ['jkt muda', 'https://dispora.jakarta.go.id/jktmuda'],
   ['jktmuda', 'https://dispora.jakarta.go.id/jktmuda'],
 ];
@@ -116,63 +46,44 @@ export function linkForProgram(title) {
   return null;
 }
 
-export function normalizeProgram(p, i = 0) {
+// ---------- Normalizer ----------
+
+const ACCENTS = ['primary', 'blue', 'gold'];
+
+function normalizeProgram(p, i = 0) {
   return {
     id: String(p.id ?? p.slug ?? i),
     title: p.title || p.name || '-',
     description: cleanText(pick(p, 'description', 'excerpt', 'summary', 'content')),
     content: cleanText(pick(p, 'content', 'description')),
     image: pick(p, 'image', 'bannerImage', 'thumbnail', 'cover', 'imageUrl'),
-    tag: p.type || p.category || 'Program',
-    accent: ACCENTS[i % ACCENTS.length],
+    tag: p.tag || p.type || p.category || 'Program',
+    accent: p.accent || ACCENTS[i % ACCENTS.length],
     url: pick(p, 'url', 'link', 'externalUrl') || linkForProgram(p.title || p.name),
-    children: [],
+    children: p.children || [],
   };
 }
 
-export function normalizeInspiration(a, i = 0) {
+function normalizeInspiration(a, i = 0) {
   return {
     id: String(a.id ?? i),
     name: a.name || '-',
-    achievement: pick(a, 'title', 'achievement', 'subtitle') || '',
+    achievement: pick(a, 'achievement', 'title', 'subtitle') || '',
     quote: stripQuotes(pick(a, 'quote', 'text', 'description')),
     image: pick(a, 'image', 'photo', 'imageUrl', 'thumbnail'),
   };
 }
 
-export function normalizeQuote(q, i = 0) {
-  const author = cleanText(pick(q, 'author', 'name') || '');
-  // "Matt Biondi (Atlet Renang)" -> nama + peran
-  const m = author.match(/^(.*?)\s*\((.*)\)\s*$/);
+function normalizeQuote(q, i = 0) {
   return {
     id: String(q.id ?? i),
-    quote: stripQuotes(pick(q, 'text', 'quote', 'content')),
-    name: m ? m[1].trim() : author,
-    role: m ? m[2].trim() : pick(q, 'role', 'position') || '',
+    quote: stripQuotes(pick(q, 'quote', 'text', 'content')),
+    name: pick(q, 'name', 'author') || '',
+    role: pick(q, 'role', 'position') || '',
   };
 }
 
-export function normalizeGalleryItem(g, i = 0) {
-  return {
-    id: String(g.id ?? i),
-    image: pick(g, 'image', 'imageUrl', 'thumbnail', 'displayUrl', 'url'),
-    caption: cleanText(pick(g, 'caption', 'shortCaption', 'title', 'description') || ''),
-    link: pick(g, 'permalink', 'link', 'postUrl'),
-  };
-}
-
-export function normalizeSocialItem(s, i = 0) {
-  return {
-    id: String(s.id ?? s.instagramPostId ?? i),
-    image: pick(s, 'image', 'imageUrl', 'thumbnail', 'displayUrl', 'mediaUrl'),
-    title: s.title || 'Dispora',
-    caption: cleanText(pick(s, 'shortCaption', 'caption', 'description') || ''),
-    link: pick(s, 'permalink', 'link', 'postUrl'),
-    handle: s.username ? `@${s.username}` : '@disporadkijkt',
-  };
-}
-
-export function normalizeHeroItem(h) {
+function normalizeHeroItem(h) {
   return {
     id: h.id,
     type: h.type || 'INFO',
@@ -189,106 +100,168 @@ export function normalizeHeroItem(h) {
   };
 }
 
-// ---------- Pemanggilan ----------
+function normalizeArticle(a) {
+  return {
+    id: a.id,
+    category: a.category || 'Berita',
+    title: a.title,
+    slug: a.slug,
+    excerpt: cleanText(a.excerpt),
+    content: cleanText(a.content),
+    body: cleanText(a.content),
+    image: a.thumbnail || a.image,
+    thumbnail: a.thumbnail,
+    date: a.published_at
+      ? new Date(a.published_at).toLocaleDateString('id-ID', {
+          day: 'numeric', month: 'long', year: 'numeric',
+        })
+      : '',
+    published_at: a.published_at,
+  };
+}
+
+function normalizeGalleryItem(g, i = 0) {
+  return {
+    id: String(g.id ?? i),
+    image: pick(g, 'image', 'imageUrl', 'url'),
+    caption: cleanText(pick(g, 'caption', 'title', 'description') || ''),
+    link: pick(g, 'link', 'permalink'),
+  };
+}
+
+function normalizeSocialItem(s, i = 0) {
+  return {
+    id: String(s.id ?? i),
+    image: pick(s, 'image', 'imageUrl'),
+    title: s.title || 'Dispora',
+    caption: cleanText(pick(s, 'caption', 'description') || ''),
+    link: pick(s, 'link', 'permalink'),
+    handle: s.handle || s.username ? `@${s.username}` : '@disporadkijkt',
+  };
+}
+
+// ---------- Fetch functions (pakai API Laravel) ----------
 
 export async function fetchHero() {
-  const data = await request(ENDPOINTS.hero);
-  return toArray(data, 'news', 'hero').map(normalizeHeroItem);
+  try {
+    const res = await api.get('/api/articles?page=1', { auth: false });
+    const list = res?.data || res?.articles?.data || [];
+    return list.slice(0, 5).map((a) =>
+      normalizeHeroItem({
+        id: a.id,
+        type: 'NEWS',
+        title: a.title,
+        excerpt: a.excerpt,
+        content: a.content,
+        date: a.published_at,
+        image: a.thumbnail,
+        registrationUrl: null,
+      })
+    );
+  } catch (e) {
+    return [];
+  }
 }
 
 export async function fetchPrograms() {
-  const data = await request(ENDPOINTS.programs);
-  return toArray(data, 'programs').map(normalizeProgram);
+  // Tidak ada endpoint program di Laravel; ambil dari artikel kalau ada
+  try {
+    const res = await api.get('/api/articles?page=1', { auth: false });
+    const list = res?.data || [];
+    return list.slice(0, 5).map(normalizeProgram);
+  } catch (e) {
+    return [];
+  }
 }
 
 export async function fetchInspiration() {
-  const data = await request(ENDPOINTS.inspiration);
-  return toArray(data, 'inspiration', 'profiles').map(normalizeInspiration);
+  return [];
 }
 
 export async function fetchQuotes() {
-  const data = await request(ENDPOINTS.quotes);
-  return toArray(data, 'quotes').map(normalizeQuote);
+  return [];
 }
 
 export async function fetchGallery() {
-  const data = await request(ENDPOINTS.gallery);
-  return toArray(data, 'gallery', 'images')
-    .map(normalizeGalleryItem)
-    .filter((x) => !!x.image);
+  try {
+    const res = await api.get('/api/facilities', { auth: false });
+    const list = res?.facilities || [];
+    return list
+      .filter((f) => f.image || f.image_url)
+      .map((f, i) =>
+        normalizeGalleryItem({
+          id: f.id,
+          image: f.image_url || f.image,
+          caption: f.name,
+          link: null,
+        }, i)
+      );
+  } catch (e) {
+    return [];
+  }
 }
 
 export async function fetchSocial() {
-  const data = await request(ENDPOINTS.social);
-  return toArray(data, 'social', 'posts').map(normalizeSocialItem);
+  return [];
 }
 
-// Endpoint admin — biasanya menolak tanpa sesi login.
-export async function fetchHelpdeskTickets() {
-  const data = await request(ENDPOINTS.helpdeskTickets);
-  return toArray(data, 'tickets');
-}
-
-export async function sendChatMessage({
-  sessionId = null,
-  message,
-  attachmentUrl = null,
-  attachmentName = null,
-}) {
-  const data = await request(ENDPOINTS.chatbot, {
-    method: 'POST',
-    body: JSON.stringify({ sessionId, message, attachmentUrl, attachmentName }),
-  });
-
-  const reply =
-    (data && (data.reply || data.message || data.answer || data.response || data.text)) ||
-    (data && data.data && (data.data.reply || data.data.message || data.data.answer)) ||
-    null;
-
-  const nextSession =
-    (data && (data.sessionId || data.session_id)) ||
-    (data && data.data && (data.data.sessionId || data.data.session_id)) ||
-    sessionId;
-
-  return { reply, sessionId: nextSession, raw: data };
-}
-
-// Ambil semua konten beranda sekaligus. Tiap bagian gagal sendiri-sendiri
-// supaya satu endpoint bermasalah tidak mengosongkan seluruh halaman.
 export async function fetchHomeContent() {
-  const jobs = [
-    ['hero', fetchHero],
-    ['programs', fetchPrograms],
-    ['inspiration', fetchInspiration],
-    ['quotes', fetchQuotes],
-    ['gallery', fetchGallery],
-    ['social', fetchSocial],
-  ];
+  const [hero, programs, inspiration, quotes, gallery, social] = await Promise.all([
+    fetchHero(),
+    fetchPrograms(),
+    fetchInspiration(),
+    fetchQuotes(),
+    fetchGallery(),
+    fetchSocial(),
+  ]);
 
-  const settled = await Promise.all(
-    jobs.map(async ([key, fn]) => {
-      try {
-        return [key, await fn(), null];
-      } catch (e) {
-        return [key, null, e];
-      }
-    })
-  );
+  return {
+    hero,
+    programs,
+    inspiration,
+    quotes,
+    gallery,
+    social,
+    errors: {},
+  };
+}
 
-  const result = {};
-  const errors = {};
-  settled.forEach(([key, value, err]) => {
-    result[key] = value;
-    if (err) errors[key] = err;
-  });
-  result.errors = errors;
-  return result;
+export async function fetchHelpdeskTickets() {
+  // Helpdesk tickets biasanya butuh auth admin; untuk user pakai list chat
+  try {
+    const res = await api.get('/api/chat/messages');
+    const messages = res?.messages || [];
+    // Convert messages jadi "ticket" shape sederhana
+    return messages.map((m) => ({
+      id: m.id,
+      ticketNumber: `CHAT-${String(m.id).padStart(4, '0')}`,
+      subject: m.sender_type === 'admin' ? 'Balasan admin' : 'Pesan Anda',
+      message: m.message,
+      name: m.sender_type === 'user' ? 'Anda' : 'Helpdesk',
+      status: m.is_read ? 'CLOSED' : 'OPEN',
+      createdAt: m.created_at,
+    }));
+  } catch (e) {
+    return [];
+  }
+}
+
+export async function sendChatMessage({ sessionId, message, attachmentUrl, attachmentName }) {
+  try {
+    const res = await api.post('/api/chat/messages', { message });
+    return {
+      reply: null, // chat dari admin via notifikasi
+      sessionId: sessionId || res?.data?.id || null,
+      raw: res,
+    };
+  } catch (e) {
+    throw e;
+  }
 }
 
 export default {
   BASE_URL,
   linkForProgram,
-  ENDPOINTS,
   fetchHero,
   fetchPrograms,
   fetchInspiration,

@@ -2,12 +2,16 @@ import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { useTheme, spacing } from '../theme';
 
-// Logo resmi Dispora.
-// Simpan berkas PNG di: assets/dispora-logo.png
 const LOGO = require('../../assets/dispora-logo.png');
 
 export function LogoMark({ size = 38 }) {
-  return <Image source={LOGO} style={{ width: size, height: size }} resizeMode="contain" />;
+  return (
+    <Image
+      source={LOGO}
+      style={{ width: size, height: size }}
+      resizeMode="contain"
+    />
+  );
 }
 
 export function BrandHeader({ size = 38, subtitle = 'DKI Jakarta' }) {
@@ -17,7 +21,7 @@ export function BrandHeader({ size = 38, subtitle = 'DKI Jakarta' }) {
       <LogoMark size={size} />
       <View>
         <Text style={[styles.name, { color: colors.text }]}>
-          Dispora <Text style={{ color: colors.primary }}>Jakarta</Text>
+          Gelanggang <Text style={{ color: colors.primary }}>Jakbar</Text>
         </Text>
         <Text style={[styles.sub, { color: colors.textFaint }]}>{subtitle}</Text>
       </View>

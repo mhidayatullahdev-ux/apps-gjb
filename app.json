@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Dispora Jakarta",
+    "name": "Gelanggang Jakbar",
     "slug": "dispora-mobile",
-    "version": "1.2.0",
+    "version": "1.2.2",
     "orientation": "portrait",
     "scheme": "disporamobile",
     "userInterfaceStyle": "automatic",
@@ -16,6 +16,22 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Izinkan $(PRODUCT_NAME) mengakses galeri foto Anda untuk mengunggah gambar.",
+          "cameraPermission": "Izinkan $(PRODUCT_NAME) mengakses kamera Anda untuk mengambil foto."
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.425017210315-5v634vcgkn78r7j0mtph458lhg60vb0c"
+        }
+      ],
+      "expo-localization"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "id.go.jakarta.dispora.demo",
@@ -25,7 +41,7 @@
     },
     "android": {
       "package": "id.go.jakarta.dispora.demo",
-      "versionCode": 3,
+      "versionCode": 5,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"

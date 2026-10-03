@@ -1,0 +1,89 @@
+// src/components/QuickWidget.js
+import React from 'react';
+import { View, Text, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+
+import { useTheme, useThemedStyles, spacing, radius } from '../theme';
+import { useI18n } from '../i18n/i18n';
+import { PressableScale } from './anim';
+
+export default function QuickWidget({ navigation, refs = {} }) {
+  const { colors } = useTheme();
+  const { t } = useI18n();
+  const s = useThemedStyles(makeStyles);
+
+  const WIDGET_ITEMS = [
+    { id: 'facilities', icon: 'business', label: t('widget.facilities'), route: 'Fasilitas', accent: 'primary' },
+    { id: 'booking', icon: 'calendar', label: t('widget.booking'), route: 'Fasilitas', accent: 'gold' },
+    { id: 'transactions', icon: 'receipt', label: t('widget.transactions'), route: 'Transactions', accent: 'primary' },
+    { id: 'chat', icon: 'chatbubble-ellipses', label: t('widget.chat'), route: 'Chat', accent: 'gold' },
+    { id: 'helpdesk', icon: 'headset', label: t('widget.helpdesk'), route: 'Helpdesk', accent: 'primary' },
+    { id: 'news', icon: 'newspaper', label: t('widget.news'), route: 'Berita', accent: 'gold' },
+    { id: 'profile', icon: 'person', label: t('widget.profile'), route: 'EditProfile', accent: 'primary' },
+    { id: 'more', icon: 'grid', label: t('widget.more'), route: 'Lainnya', accent: 'gold' },
+  ];
+
+  const handlePress = (item) => {
+    if (!item.route) {
+      Alert.alert('Segera hadir', 'Fitur ini akan tersedia di update berikutnya.');
+      return;
+    }
+    navigation.navigate(item.route);
+  };
+
+  const getAccent = (accent) => {
+    if (accent === 'gold') return { bg: colors.goldSoft, fg: colors.gold };
+    return { bg: colors.primarySoft, fg: colors.primary };
+  };
+
+  return (
+    <View style={s.wrap}>
+      <Text style={s.sectionLabel}>{t('widget.sectionLabel')}</Text>
+      <View style={s.grid}>
+        {WIDGET_ITEMS.map((item) => {
+          const accent = getAccent(item.accent);
+          return (
+            <View
+              key={item.id}
+              ref={refs[item.id]}
+              collapsable={false}
+              style={s.itemWrap}
+            >
+              <PressableScale
+                onPress={() => handlePress(item)}
+                style={s.item}
+                scaleTo={0.92}
+              >
+                <View style={[s.iconBox, { backgroundColor: accent.bg }]}>
+                  <Ionicons name={item.icon} size={24} color={accent.fg} />
+                </View>
+                <Text style={s.label} numberOfLines={1}>{item.label}</Text>
+              </PressableScale>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const makeStyles = (c, t) => ({
+  wrap: { marginTop: spacing.xxl, paddingHorizontal: spacing.lg },
+  sectionLabel: {
+    ...t.eyebrow, fontSize: 11, color: c.gold,
+    marginBottom: spacing.md, letterSpacing: 1.2,
+  },
+  grid: {
+    flexDirection: 'row', flexWrap: 'wrap',
+    backgroundColor: c.surface, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: c.line,
+    paddingVertical: spacing.md, paddingHorizontal: spacing.xs,
+  },
+  itemWrap: { width: '25%', alignItems: 'center', paddingVertical: spacing.sm },
+  item: { alignItems: 'center', gap: 6, paddingHorizontal: 2 },
+  iconBox: {
+    width: 52, height: 52, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  label: { fontSize: 11, fontWeight: '700', color: c.text, textAlign: 'center' },
+});

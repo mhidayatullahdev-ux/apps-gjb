@@ -77,7 +77,7 @@ export default function EventsScreen({ navigation }) {
 }
 
 const makeStyles = (c, t) => ({
-  screen: { flex: 1, backgroundColor: c.base },
+  screen: { flex: 1, backgroundColor: 'transparent' },
   headerWrap: { gap: spacing.xs, marginBottom: spacing.lg },
   title: { ...t.display, fontSize: 28 },
   caption: { ...t.body },

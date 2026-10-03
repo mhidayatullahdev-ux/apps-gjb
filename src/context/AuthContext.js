@@ -1,98 +1,96 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Autentikasi mode demo: akun disimpan di perangkat, tidak ada server.
-// Kalau nanti Dispora menyediakan endpoint auth, ganti isi login()
-// dan register() dengan panggilan API — sisa aplikasi tidak perlu berubah.
-
-const USERS_KEY = 'dispora.users';
-const SESSION_KEY = 'dispora.session';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { authApi } from '../api/auth';
+import { getToken, setToken } from '../api/client';
+import { disconnectEcho } from '../api/echo';
+import { registerForPushNotifications } from '../services/notifications';
 
 const AuthContext = createContext(null);
-
-async function readUsers() {
-  try {
-    const raw = await AsyncStorage.getItem(USERS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-async function writeUsers(users) {
-  try {
-    await AsyncStorage.setItem(USERS_KEY, JSON.stringify(users));
-  } catch (e) {
-    // abaikan
-  }
-}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(SESSION_KEY)
-      .then((raw) => {
-        if (raw) setUser(JSON.parse(raw));
-      })
-      .catch(() => {})
-      .finally(() => setReady(true));
+    (async () => {
+      try {
+        const saved = await getToken();
+        if (saved) {
+          const res = await authApi.profile();
+          setUser(res.user);
+        }
+      } catch {
+        await setToken(null);
+        setUser(null);
+      } finally {
+        setReady(true);
+      }
+    })();
   }, []);
 
-  const value = useMemo(
-    () => ({
-      user,
-      ready,
-      isLoggedIn: !!user,
+  const register = useCallback(async (payload) => {
+    const res = await authApi.register(payload);
+    await setToken(res.token);
+    setUser(res.user);
+    return res;
+  }, []);
 
-      async register({ name, email, phone, password }) {
-        const users = await readUsers();
-        const exists = users.some((u) => u.email.toLowerCase() === email.toLowerCase());
-        if (exists) {
-          const err = new Error('EXISTS');
-          err.code = 'EXISTS';
-          throw err;
-        }
-        const record = {
-          id: 'u' + Date.now(),
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-          phone: phone.trim(),
-          password, // demo saja; jangan pakai pola ini di produksi
-          createdAt: new Date().toISOString(),
-        };
-        await writeUsers([...users, record]);
+  const login = useCallback(async (payload) => {
+    const res = await authApi.login(payload);
+    await setToken(res.token);
+    setUser(res.user);
+  
+    try {
+      const pushToken = await registerForPushNotifications(); // safe-call
+      if (pushToken) {
+        // Optional: kirim ke backend untuk simpan
+        // await authApi.savePushToken(pushToken);
+      }
+    } catch {}
+  
+    return res;
+  }, []);
 
-        const session = { id: record.id, name: record.name, email: record.email, phone: record.phone };
-        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
-        setUser(session);
-        return session;
-      },
+  const googleLogin = useCallback(async (payload) => {
+    const res = await authApi.google(payload);
+    await setToken(res.token);
+    setUser(res.user);
+    return res;
+  }, []);
 
-      async login({ email, password }) {
-        const users = await readUsers();
-        const found = users.find(
-          (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password
-        );
-        if (!found) {
-          const err = new Error('NOT_FOUND');
-          err.code = 'NOT_FOUND';
-          throw err;
-        }
-        const session = { id: found.id, name: found.name, email: found.email, phone: found.phone };
-        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
-        setUser(session);
-        return session;
-      },
+  const completeProfile = useCallback(async (payload) => {
+    const res = await authApi.completeProfile(payload);
+    setUser(res.user);
+    return res;
+  }, []);
 
-      async logout() {
-        await AsyncStorage.removeItem(SESSION_KEY);
-        setUser(null);
-      },
-    }),
-    [user, ready]
-  );
+  const refreshProfile = useCallback(async () => {
+    const res = await authApi.profile();
+    setUser(res.user);
+    return res.user;
+  }, []);
+
+  const logout = useCallback(async () => {
+    try { await GoogleSignin.signOut(); } catch {}
+    // Putuskan WebSocket dulu sebelum token dihapus
+    disconnectEcho();
+    try { await authApi.logout(); } catch {}
+    await setToken(null);
+    setUser(null);
+  }, []);
+
+  const value = useMemo(() => ({
+    user,
+    ready,
+    isLoggedIn: !!user,
+    isProfileComplete: !!user?.is_profile_complete,
+    register,
+    login,
+    googleLogin,
+    completeProfile,
+    refreshProfile,
+    logout,
+  }), [user, ready, register, login, googleLogin, completeProfile, refreshProfile, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
