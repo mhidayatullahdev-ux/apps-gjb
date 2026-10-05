@@ -1,5 +1,5 @@
 // src/screens/LoginScreen.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, TextInput, ScrollView, Pressable,
   KeyboardAvoidingView, Platform,
@@ -12,14 +12,15 @@ import { useI18n } from '../i18n/i18n';
 import { useAuth } from '../context/AuthContext';
 import { PrimaryButton, Notice } from '../components/common';
 import { useGoogleAuth } from '../hooks/useGoogleAuth';
+import { toast } from '../utils/toast';
 
 const REMEMBER_KEY = 'dispora.rememberMe';
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen({ navigation, route }) {
   const { colors } = useTheme();
   const { t } = useI18n();
   const s = useThemedStyles(makeStyles);
-  const { login } = useAuth();
+  const { login, isLoggedIn, isProfileComplete } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,9 +28,43 @@ export default function LoginScreen({ navigation }) {
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const hasNavigated = useRef(false);
 
   const { promptGoogleLogin, loading: googleLoading, error: googleError } = useGoogleAuth();
   const displayError = error || googleError;
+
+  // ✅ Auto-redirect setelah login sukses
+  useEffect(() => {
+    if (!isLoggedIn || !isProfileComplete) return;
+    if (hasNavigated.current) return;
+    hasNavigated.current = true;
+
+    const returnTo = route?.params?.returnTo;
+    const returnParams = route?.params?.returnParams;
+
+    const timer = setTimeout(() => {
+      try {
+        if (returnTo) {
+          navigation.reset({
+            index: 1,
+            routes: [
+              { name: 'Tabs' },
+              { name: returnTo, params: returnParams },
+            ],
+          });
+        } else {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Tabs' }],
+          });
+        }
+      } catch (e) {
+        console.warn('[Login] redirect error:', e);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [isLoggedIn, isProfileComplete, navigation, route]);
 
   // Load credentials kalau "Ingat Saya" dicentang
   useEffect(() => {
@@ -48,10 +83,7 @@ export default function LoginScreen({ navigation }) {
 
   const saveCredentials = async (email, password) => {
     try {
-      await AsyncStorage.setItem(
-        REMEMBER_KEY,
-        JSON.stringify({ email, password })
-      );
+      await AsyncStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, password }));
     } catch {}
   };
 
@@ -68,14 +100,17 @@ export default function LoginScreen({ navigation }) {
     try {
       await login({ email: email.trim().toLowerCase(), password });
 
-      // Simpan / hapus credentials
       if (remember) {
         await saveCredentials(email.trim().toLowerCase(), password);
       } else {
         await clearCredentials();
       }
+
+      toast.success('Login Berhasil', 'Selamat datang kembali!');
     } catch (e) {
-      setError(e.message || t('auth.errNotFound'));
+      const msg = e.message || t('auth.errNotFound');
+      setError(msg);
+      toast.error('Login Gagal', msg);
     } finally {
       setLoading(false);
     }
@@ -134,7 +169,6 @@ export default function LoginScreen({ navigation }) {
           </View>
         </View>
 
-        {/* ✅ Ingat Saya + Lupa Password */}
         <View style={s.rowBetween}>
           <Pressable
             onPress={() => setRemember((v) => !v)}
@@ -202,17 +236,13 @@ const makeStyles = (c, t) => ({
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', marginTop: spacing.xs,
   },
-  rememberRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-  },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   checkbox: {
     width: 20, height: 20, borderRadius: 5,
     borderWidth: 2, borderColor: c.line,
     alignItems: 'center', justifyContent: 'center',
   },
-  checkboxActive: {
-    backgroundColor: c.primary, borderColor: c.primary,
-  },
+  checkboxActive: { backgroundColor: c.primary, borderColor: c.primary },
   rememberLabel: { color: c.text, fontSize: 13, fontWeight: '600' },
   forgotLink: { color: c.primary, fontSize: 13, fontWeight: '800' },
   dividerRow: {

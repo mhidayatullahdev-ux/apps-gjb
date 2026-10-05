@@ -1,4 +1,3 @@
-// src/components/ConfirmModal.js
 import React from 'react';
 import {
   View, Text, Modal, Pressable, TouchableWithoutFeedback, ActivityIndicator,
@@ -51,7 +50,6 @@ export default function ConfirmModal({
               <Text style={s.title}>{title}</Text>
               {message ? <Text style={s.message}>{message}</Text> : null}
 
-              {/* ✅ Actions — pakai Pressable biasa biar flex:1 jalan */}
               <View style={s.actions}>
                 <Pressable
                   style={({ pressed }) => [

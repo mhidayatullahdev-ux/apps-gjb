@@ -1,4 +1,3 @@
-// src/api/auth.js
 import api from './client';
 
 export const authApi = {
@@ -14,7 +13,6 @@ export const authApi = {
   completeProfile: (data) => api.post('/api/profile/complete', data),
   changePassword: (data) => api.post('/api/profile/change-password', data),
 
-  // ✅ Reset password dengan OTP
   forgotPassword: (data) => api.post('/api/forgot-password', data, { auth: false }),
   resetPassword: (data) => api.post('/api/reset-password', data, { auth: false }),
 

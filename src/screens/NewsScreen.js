@@ -26,12 +26,18 @@ export default function NewsScreen({ navigation }) {
       const items = (res.data || []).map((a) => ({
         id: a.id,
         title: a.title,
+        slug: a.slug,
         excerpt: a.excerpt,
+        content: a.content,
+        body: a.content,
         category: 'Berita',
         date: a.published_at
           ? new Date(a.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
           : '',
-        image: a.thumbnail,
+        image: a.thumbnail_url || a.thumbnail,
+        thumbnail: a.thumbnail_url || a.thumbnail,
+        published_at: a.published_at,
+        author: a.author,
       }));
       setList(items);
     } catch { setList([]); }

@@ -1,4 +1,3 @@
-// src/api/bookings.js
 import api, { BASE_URL, getToken } from './client';
 
 export const bookingsApi = {
@@ -13,14 +12,11 @@ export const bookingsApi = {
   }),
   uploadPayment: (id, formData) => api.post(`/api/bookings/${id}/payment`, formData),
 
-  // ✅ Reschedule
   rescheduleTerms: () => api.get('/api/reschedule-terms', { auth: false }),
   reschedule: (id, payload) => api.post(`/api/bookings/${id}/reschedule`, payload),
 
-  // ✅ Cancel
   cancel: (id) => api.post(`/api/bookings/${id}/cancel`),
 
-  // ✅ Invoice — return URL + headers untuk download
   invoiceUrl: (id) => `${BASE_URL}/api/bookings/${id}/invoice`,
   downloadInvoice: async (id) => {
     const token = await getToken();

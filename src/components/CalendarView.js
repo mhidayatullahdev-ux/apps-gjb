@@ -1,4 +1,3 @@
-// src/components/CalendarView.js
 import React, { useMemo } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

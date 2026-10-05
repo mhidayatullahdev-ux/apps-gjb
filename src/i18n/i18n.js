@@ -1,6 +1,6 @@
-// src/i18n/i18n.js
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setApiLanguage } from '../api/client';
 
 const STORAGE_KEY = 'dispora.lang';
 
@@ -114,7 +114,7 @@ const dict = {
 
     // ============ FACILITIES ============
     'facilities.title': 'Fasilitas',
-    'facilities.caption': 'Fasilitas olahraga milik Dispora yang bisa dipesan.',
+    'facilities.caption': 'Fasilitas olahraga yang bisa dipesan.',
     'facilities.searchPlaceholder': 'Cari fasilitas...',
     'facilities.empty': 'Fasilitas tidak ditemukan',
     'facilities.emptyHint': 'Coba kata kunci lain atau pilih wilayah yang berbeda.',
@@ -489,6 +489,7 @@ export function I18nProvider({ children }) {
       lang,
       setLang: (l) => {
         setLang(l);
+        setApiLanguage(l);
         AsyncStorage.setItem(STORAGE_KEY, l).catch(() => {});
       },
       t: (key) => (dict[lang] && dict[lang][key]) || dict.id[key] || key,

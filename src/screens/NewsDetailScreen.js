@@ -1,44 +1,32 @@
 // src/screens/NewsDetailScreen.js
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Image, Linking, Share, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View, Text, ScrollView, Image, Linking, Share, Alert, ActivityIndicator,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme, useThemedStyles, spacing, radius } from '../theme';
 import { useI18n } from '../i18n/i18n';
 import { BASE_URL } from '../api/client';
+import { articlesApi } from '../api/articles';
 import { Tag, PrimaryButton } from '../components/common';
 import { FadeInUp, PressableScale, stagger } from '../components/anim';
 
-// ✅ Decode HTML entities (mis. &lt; → <, &amp; → &, &nbsp; → spasi)
 function decodeHtmlEntities(str) {
   if (!str) return '';
   const entities = {
-    '&amp;': '&',
-    '&lt;': '<',
-    '&gt;': '>',
-    '&quot;': '"',
-    '&#39;': "'",
-    '&apos;': "'",
-    '&nbsp;': ' ',
-    '&mdash;': '—',
-    '&ndash;': '–',
-    '&hellip;': '…',
-    '&copy;': '©',
-    '&reg;': '®',
+    '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"',
+    '&#39;': "'", '&apos;': "'", '&nbsp;': ' ', '&mdash;': '—',
+    '&ndash;': '–', '&hellip;': '…', '&copy;': '©', '&reg;': '®',
     '&trade;': '™',
   };
   return String(str).replace(/&[a-zA-Z#0-9]+;/g, (m) => entities[m] || m);
 }
 
-// ✅ Clean HTML → plain text dengan paragraph breaks
 function cleanText(value) {
   if (!value) return '';
   let str = String(value);
-
-  // 1. Decode HTML entities dulu (penting!)
   str = decodeHtmlEntities(str);
-
-  // 2. Convert block tags ke newline
   str = str
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n\n')
@@ -46,22 +34,16 @@ function cleanText(value) {
     .replace(/<\/li>/gi, '\n')
     .replace(/<\/div>/gi, '\n\n')
     .replace(/<hr\s*\/?>/gi, '\n\n');
-
-  // 3. Strip semua tag HTML yang tersisa
   str = str.replace(/<[^>]*>/g, '');
-
-  // 4. Cleanup whitespace
   str = str
     .replace(/[ \t]+/g, ' ')
     .replace(/\n[ \t]+/g, '\n')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-
   return str;
 }
 
-// ✅ Resolve URL gambar
 function resolveImageUrl(uri) {
   if (!uri) return null;
   const str = String(uri).trim();
@@ -78,13 +60,51 @@ export default function NewsDetailScreen({ route }) {
   const { colors } = useTheme();
   const { t, lang } = useI18n();
   const s = useThemedStyles(makeStyles);
-  const { article } = route.params;
+
+  // ✅ Terima article dari params
+  const [article, setArticle] = useState(route.params?.article || {});
+  const [loading, setLoading] = useState(false);
   const [sharing, setSharing] = useState(false);
 
-  // ✅ Ambil content dari berbagai kemungkinan field
+  // ✅ Fallback: kalau content kosong, fetch detail dari API
+  useEffect(() => {
+    const hasContent = !!(article?.content || article?.body);
+    if (hasContent) return;
+    if (!article?.id) return;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await articlesApi.detail(article.id);
+        // API bisa balas { data: {...} } atau langsung {...}
+        const detail = res?.data || res;
+        if (detail && detail.id) {
+          setArticle((prev) => ({
+            ...prev,
+            ...detail,
+            // Normalisasi field
+            content: detail.content || prev.content || '',
+            body: detail.content || prev.body || '',
+            image: detail.thumbnail_url || detail.thumbnail || prev.image,
+            thumbnail: detail.thumbnail_url || detail.thumbnail || prev.thumbnail,
+            date: detail.published_at
+              ? new Date(detail.published_at).toLocaleDateString(
+                  lang === 'en' ? 'en-GB' : 'id-ID',
+                  { day: 'numeric', month: 'long', year: 'numeric' }
+                )
+              : prev.date,
+          }));
+        }
+      } catch (e) {
+        console.warn('[NewsDetail] Fetch detail error:', e?.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [article?.id, article?.content, article?.body, lang]);
+
   const rawContent = article.content || article.body || article.excerpt || '';
 
-  // Split jadi paragraphs (decode + strip dulu)
   const paragraphs = cleanText(rawContent)
     .split('\n')
     .map((p) => p.trim())
@@ -134,7 +154,7 @@ export default function NewsDetailScreen({ route }) {
             source={{ uri: imageUri }}
             style={s.cover}
             resizeMode="cover"
-            onError={(e) => console.warn('[NewsDetail] Image error:', imageUri)}
+            onError={() => console.warn('[NewsDetail] Image error:', imageUri)}
           />
         </FadeInUp>
       ) : null}
@@ -157,7 +177,14 @@ export default function NewsDetailScreen({ route }) {
         </FadeInUp>
       ) : null}
 
-      {paragraphs.length > 0 ? (
+      {loading ? (
+        <View style={{ paddingVertical: spacing.xl, alignItems: 'center' }}>
+          <ActivityIndicator color={colors.primary} />
+          <Text style={[s.paragraph, { marginTop: spacing.md, textAlign: 'center' }]}>
+            {lang === 'en' ? 'Loading content...' : 'Memuat konten...'}
+          </Text>
+        </View>
+      ) : paragraphs.length > 0 ? (
         paragraphs.map((p, i) => (
           <FadeInUp key={i} delay={stagger(i + 3, 45, 320)}>
             <Text style={s.paragraph}>{p}</Text>
@@ -192,35 +219,24 @@ const makeStyles = (c, t) => ({
   screen: { flex: 1, backgroundColor: 'transparent' },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl * 2 },
   cover: {
-    width: '100%',
-    height: 220,
-    borderRadius: radius.md,
-    marginBottom: spacing.lg,
-    backgroundColor: c.surfaceAlt,
+    width: '100%', height: 220, borderRadius: radius.md,
+    marginBottom: spacing.lg, backgroundColor: c.surfaceAlt,
   },
   metaTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   date: { ...t.small },
   title: { ...t.display, fontSize: 25, lineHeight: 32, marginTop: spacing.md },
   lead: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginTop: spacing.lg,
-    marginBottom: spacing.lg,
+    flexDirection: 'row', gap: spacing.md,
+    marginTop: spacing.lg, marginBottom: spacing.lg,
   },
   leadBar: { width: 3, borderRadius: 2, backgroundColor: c.primary },
   leadText: { ...t.body, flex: 1, fontSize: 15, lineHeight: 23 },
   paragraph: { ...t.body, fontSize: 14, lineHeight: 23, marginBottom: spacing.md },
   share: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignSelf: 'flex-start',
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: c.line,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    marginTop: spacing.lg, paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg, alignSelf: 'flex-start',
+    borderRadius: radius.pill, borderWidth: 1, borderColor: c.line,
   },
   shareText: { color: c.text, fontSize: 13, fontWeight: '700' },
 });

@@ -1,10 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, Text } from 'react-native';
 
-// Kumpulan animasi ringan memakai Animated bawaan React Native.
-// Tidak menambah dependensi apa pun.
-
-// Muncul dengan fade + naik sedikit. Dipakai untuk item daftar dan section.
 export function FadeInUp({ children, delay = 0, distance = 18, duration = 420, style }) {
   const anim = useRef(new Animated.Value(0)).current;
 
@@ -42,7 +38,6 @@ export function FadeInUp({ children, delay = 0, distance = 18, duration = 420, s
   );
 }
 
-// Tombol/kartu yang mengecil sedikit saat ditekan.
 export function PressableScale({
   children,
   onPress,
@@ -110,7 +105,6 @@ export function AnimatedCounter({
   return <Text style={style}>{display.toLocaleString(locale)}</Text>;
 }
 
-// Titik berdenyut untuk penanda "live".
 export function LiveDot({ size = 8, color = '#22C55E', style }) {
   const pulse = useRef(new Animated.Value(0)).current;
 
@@ -154,9 +148,6 @@ export function LiveDot({ size = 8, color = '#22C55E', style }) {
   );
 }
 
-// Nilai scroll untuk efek header. Pakai:
-//   const { scrollY, onScroll } = useScrollY();
-//   <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} ...>
 export function useScrollY() {
   const scrollY = useRef(new Animated.Value(0)).current;
   const onScroll = Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
@@ -165,7 +156,6 @@ export function useScrollY() {
   return { scrollY, onScroll };
 }
 
-// Jeda bertingkat untuk daftar, dibatasi supaya item ke-50 tidak menunggu lama.
 export function stagger(index, step = 55, max = 400) {
   return Math.min(index * step, max);
 }

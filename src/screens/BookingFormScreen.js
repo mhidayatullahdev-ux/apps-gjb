@@ -1,5 +1,5 @@
 // src/screens/BookingFormScreen.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View, Text, ScrollView, Pressable, Alert, KeyboardAvoidingView,
   Platform, TextInput, Image,
@@ -33,19 +33,19 @@ export default function BookingFormScreen({ route, navigation }) {
     purpose: initialPurpose,
   } = route.params || {};
 
-  // ✅ Ambil data dinamis dari API
   const purposes = settings.purposes || ['Latihan', 'Kompetisi'];
   const sportLabel = settings.sportLabel
     ? settings.sportLabel(court?.sport_type)
     : court?.sport_type;
 
-  const [purpose, setPurpose] = useState(
-    initialPurpose || purposes[0] || 'Latihan'
-  );
+  const [purpose, setPurpose] = useState(initialPurpose || purposes[0] || 'Latihan');
+  const [isMultiDay, setIsMultiDay] = useState(false);
+  const [endDate, setEndDate] = useState(null);
+
   const [date, setDate] = useState(() => {
     if (defaultDate) return new Date(defaultDate);
     const d = new Date();
-    d.setDate(d.getDate() + 1); // besok
+    d.setDate(d.getDate() + 1);
     return d;
   });
   const [slots, setSlots] = useState([]);
@@ -57,9 +57,18 @@ export default function BookingFormScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Load slot
+  const dayCount = useMemo(() => {
+    if (!isMultiDay || !endDate || !date) return 1;
+    const diff = Math.ceil((endDate.getTime() - date.getTime()) / 86400000) + 1;
+    return diff > 0 ? diff : 1;
+  }, [isMultiDay, date, endDate]);
+
+  const isConsultMode = purpose === 'Kompetisi' && isMultiDay && dayCount > 2;
+
   useEffect(() => {
+    if (isConsultMode) return;
     if (!date || !court?.id) return;
+
     (async () => {
       setSlotsLoading(true);
       try {
@@ -95,7 +104,7 @@ export default function BookingFormScreen({ route, navigation }) {
         setSlotsLoading(false);
       }
     })();
-  }, [date, court?.id, defaultStart, defaultEnd]);
+  }, [date, court?.id, defaultStart, defaultEnd, isConsultMode]);
 
   const pickKtp = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -113,7 +122,18 @@ export default function BookingFormScreen({ route, navigation }) {
     if (!res.canceled && res.assets?.[0]) setKtp(res.assets[0]);
   };
 
+  const goToHelpdesk = () => {
+    const message = isEn
+      ? `Hello Helpdesk,\n\nI want to consult about a competition booking:\n\n• Facility: ${court?.facility?.name || facility?.name || '-'}\n• Court: ${court?.name || '-'}\n• Start Date: ${date.toISOString().slice(0, 10)}\n• End Date: ${endDate ? endDate.toISOString().slice(0, 10) : '-'}\n• Total Days: ${dayCount} days\n• Name: ${user?.name || '-'}\n\nPlease assist.`
+      : `Halo Helpdesk,\n\nSaya ingin konsultasi pemesanan kompetisi:\n\n• Fasilitas: ${court?.facility?.name || facility?.name || '-'}\n• Lapangan: ${court?.name || '-'}\n• Tanggal Mulai: ${date.toISOString().slice(0, 10)}\n• Tanggal Selesai: ${endDate ? endDate.toISOString().slice(0, 10) : '-'}\n• Total Hari: ${dayCount} hari\n• Nama: ${user?.name || '-'}\n\nMohon dibantu. Terima kasih.`;
+
+    haptic.light();
+    navigation.navigate('Chat', { prefill: message });
+  };
+
   const submit = async () => {
+    if (isConsultMode) return;
+
     setError('');
     if (!startTime || !endTime) {
       return setError(
@@ -144,7 +164,6 @@ export default function BookingFormScreen({ route, navigation }) {
       const res = await bookingsApi.store(formData, idempotencyKey);
       const booking = res.booking;
 
-      // ✅ Track analytics
       analytics.logEvent('booking_created', {
         booking_id: booking.id,
         booking_code: booking.booking_code,
@@ -159,7 +178,6 @@ export default function BookingFormScreen({ route, navigation }) {
         amount: booking.total_amount,
       });
 
-      // ✅ Haptic feedback
       haptic.success();
 
       navigation.replace('Payment', {
@@ -180,18 +198,24 @@ export default function BookingFormScreen({ route, navigation }) {
     }
   };
 
+  const nextDays = (count) => {
+    const out = [];
+    const now = new Date();
+    for (let i = 1; i <= count; i++) {
+      out.push(new Date(now.getFullYear(), now.getMonth(), now.getDate() + i));
+    }
+    return out;
+  };
+
   return (
     <KeyboardAvoidingView
       style={s.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-        {/* Info booking */}
         <View style={s.card}>
           <Text style={s.label}>{isEn ? 'Facility' : 'Fasilitas'}</Text>
-          <Text style={s.value}>
-            {court?.facility?.name || facility?.name || '-'}
-          </Text>
+          <Text style={s.value}>{court?.facility?.name || facility?.name || '-'}</Text>
           <Divider style={{ marginVertical: spacing.sm }} />
           <Text style={s.label}>{isEn ? 'Court' : 'Lapangan'}</Text>
           <Text style={s.value}>{court?.name || '-'}</Text>
@@ -199,52 +223,72 @@ export default function BookingFormScreen({ route, navigation }) {
           <Text style={s.label}>{isEn ? 'Date' : 'Tanggal'}</Text>
           <Text style={s.value}>
             {date.toLocaleDateString(isEn ? 'en-GB' : 'id-ID', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
+              weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
             })}
           </Text>
         </View>
 
-        {error ? (
-          <Notice text={error} tone="primary" icon="alert-circle-outline" />
+        {error ? <Notice text={error} tone="primary" icon="alert-circle-outline" /> : null}
+
+        {/* PURPOSE DI ATAS */}
+        <Text style={s.fieldLabel}>{isEn ? 'PURPOSE' : 'TUJUAN PENGGUNAAN'}</Text>
+        <View style={s.chipRow}>
+          {purposes.map((p) => (
+            <Pressable
+              key={p}
+              onPress={() => {
+                setPurpose(p);
+                if (p !== 'Kompetisi') {
+                  setIsMultiDay(false);
+                  setEndDate(null);
+                }
+              }}
+              style={[s.chip, purpose === p && s.chipActive]}
+            >
+              <Text style={[s.chipText, purpose === p && s.chipTextActive]}>{p}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* Multi-day untuk Kompetisi */}
+        {purpose === 'Kompetisi' ? (
+          <View style={s.multiDayBox}>
+            <Pressable
+              onPress={() => {
+                const next = !isMultiDay;
+                setIsMultiDay(next);
+                if (!next) setEndDate(null);
+              }}
+              style={s.multiDayRow}
+            >
+              <View style={[s.checkbox, isMultiDay && s.checkboxActive]}>
+                {isMultiDay ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
+              </View>
+              <Text style={s.multiDayLabel}>
+                {isEn ? 'Multi-day (competition)' : 'Lebih dari 1 hari (kompetisi)'}
+              </Text>
+            </Pressable>
+          </View>
         ) : null}
 
-        {/* ✅ CABOR (readonly, dari court.sport_type) */}
         <Text style={s.fieldLabel}>{isEn ? 'SPORT' : 'CABOR'}</Text>
         <View style={s.sportDisplay}>
           <Ionicons name="football-outline" size={18} color={colors.primary} />
           <Text style={s.sportDisplayText}>{sportLabel}</Text>
         </View>
 
-        {/* ✅ TUJUAN PENGGUNAAN (dinamis dari settings.purposes) */}
-        <Text style={s.fieldLabel}>{isEn ? 'PURPOSE' : 'TUJUAN PENGGUNAAN'}</Text>
-        <View style={s.chipRow}>
-          {purposes.map((p) => (
-            <Pressable
-              key={p}
-              onPress={() => setPurpose(p)}
-              style={[s.chip, purpose === p && s.chipActive]}
-            >
-              <Text style={[s.chipText, purpose === p && s.chipTextActive]}>
-                {p}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Pilih tanggal */}
-        <Text style={s.fieldLabel}>{isEn ? 'CHANGE DATE' : 'UBAH TANGGAL'}</Text>
+        <Text style={s.fieldLabel}>
+          {isConsultMode
+            ? (isEn ? 'START DATE' : 'TANGGAL MULAI')
+            : (isEn ? 'CHANGE DATE' : 'UBAH TANGGAL')}
+        </Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ marginBottom: spacing.md }}
           contentContainerStyle={{ gap: spacing.sm }}
         >
-          {Array.from({ length: 14 }).map((_, i) => {
-            const d = new Date();
-            d.setDate(d.getDate() + i + 1); // mulai besok
+          {nextDays(14).map((d) => {
             const active = date.toDateString() === d.toDateString();
             return (
               <Pressable
@@ -266,95 +310,159 @@ export default function BookingFormScreen({ route, navigation }) {
           })}
         </ScrollView>
 
-        {/* Slot */}
-        <Text style={s.fieldLabel}>{isEn ? 'AVAILABLE SLOTS' : 'SLOT TERSEDIA'}</Text>
-        {slotsLoading ? (
-          <Text style={s.hint}>{isEn ? 'Loading slots...' : 'Memuat slot...'}</Text>
-        ) : slots.length === 0 ? (
-          <Text style={s.hint}>
-            {isEn ? 'No slots available for this date.' : 'Tidak ada slot tersedia untuk tanggal ini.'}
-          </Text>
+        {isMultiDay ? (
+          <>
+            <Text style={s.fieldLabel}>{isEn ? 'END DATE' : 'TANGGAL SELESAI'}</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginBottom: spacing.md }}
+              contentContainerStyle={{ gap: spacing.sm }}
+            >
+              {nextDays(14)
+                .filter((d) => d > date)
+                .map((d) => {
+                  const active = endDate && endDate.toDateString() === d.toDateString();
+                  return (
+                    <Pressable
+                      key={d.toISOString()}
+                      onPress={() => setEndDate(d)}
+                      style={[s.dateCell, active && s.dateCellActive]}
+                    >
+                      <Text style={[s.dateDow, active && { color: colors.onPrimary }]}>
+                        {d.toLocaleDateString('id-ID', { weekday: 'short' })}
+                      </Text>
+                      <Text style={[s.dateNum, active && { color: colors.onPrimary }]}>
+                        {d.getDate()}
+                      </Text>
+                      <Text style={[s.dateMon, active && { color: colors.onPrimary }]}>
+                        {d.toLocaleDateString('id-ID', { month: 'short' })}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+            </ScrollView>
+
+            {endDate ? (
+              <Notice
+                text={
+                  isEn
+                    ? `Total duration: ${dayCount} day(s)`
+                    : `Total durasi: ${dayCount} hari`
+                }
+                tone={isConsultMode ? 'gold' : 'primary'}
+                icon="information-circle-outline"
+              />
+            ) : null}
+          </>
+        ) : null}
+
+        {isConsultMode ? (
+          <View style={s.consultBox}>
+            <Ionicons name="chatbubbles-outline" size={28} color={colors.gold} />
+            <Text style={s.consultTitle}>
+              {isEn ? 'Competition Booking > 2 Days' : 'Booking Kompetisi > 2 Hari'}
+            </Text>
+            <Text style={s.consultBody}>
+              {isEn
+                ? 'For competition bookings over 2 days, please consult with our Helpdesk for special arrangements.'
+                : 'Untuk pemesanan kompetisi lebih dari 2 hari, silakan konsultasi dengan Helpdesk kami untuk pengaturan khusus.'}
+            </Text>
+          </View>
         ) : (
-          <View style={s.slotsGrid}>
-            {slots.map((slot) => {
-              const active = startTime === slot.start_time && endTime === slot.end_time;
-              const disabled = !slot.available;
-              return (
-                <Pressable
-                  key={slot.start_time}
-                  disabled={disabled}
-                  onPress={() => {
-                    setStartTime(slot.start_time);
-                    setEndTime(slot.end_time);
-                  }}
-                  style={[
-                    s.slot,
-                    active && s.slotActive,
-                    disabled && s.slotDisabled,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      s.slotText,
-                      active && { color: colors.onPrimary },
-                      disabled && s.slotTextDisabled,
-                    ]}
-                  >
-                    {slot.start_time} - {slot.end_time}
-                  </Text>
-                  <Text
-                    style={[
-                      s.slotSub,
-                      active && { color: colors.onPrimary },
-                    ]}
-                  >
-                    {disabled
-                      ? (isEn ? 'Booked' : 'Terisi')
-                      : `Rp ${Number(slot.price).toLocaleString('id-ID')}`}
-                  </Text>
+          <>
+            <Text style={s.fieldLabel}>{isEn ? 'AVAILABLE SLOTS' : 'SLOT TERSEDIA'}</Text>
+            {slotsLoading ? (
+              <Text style={s.hint}>{isEn ? 'Loading slots...' : 'Memuat slot...'}</Text>
+            ) : slots.length === 0 ? (
+              <Text style={s.hint}>
+                {isEn
+                  ? 'No slots available for this date.'
+                  : 'Tidak ada slot tersedia untuk tanggal ini.'}
+              </Text>
+            ) : (
+              <View style={s.slotsGrid}>
+                {slots.map((slot) => {
+                  const active = startTime === slot.start_time && endTime === slot.end_time;
+                  const disabled = !slot.available;
+                  return (
+                    <Pressable
+                      key={slot.start_time}
+                      disabled={disabled}
+                      onPress={() => {
+                        setStartTime(slot.start_time);
+                        setEndTime(slot.end_time);
+                      }}
+                      style={[s.slot, active && s.slotActive, disabled && s.slotDisabled]}
+                    >
+                      <Text
+                        style={[
+                          s.slotText,
+                          active && { color: colors.onPrimary },
+                          disabled && s.slotTextDisabled,
+                        ]}
+                      >
+                        {slot.start_time} - {slot.end_time}
+                      </Text>
+                      <Text style={[s.slotSub, active && { color: colors.onPrimary }]}>
+                        {disabled
+                          ? (isEn ? 'Booked' : 'Terisi')
+                          : `Rp ${Number(slot.price).toLocaleString('id-ID')}`}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+
+            <Text style={s.fieldLabel}>
+              {isEn ? 'KTP PHOTO (OPTIONAL)' : 'FOTO KTP (OPSIONAL)'}
+            </Text>
+            {ktp ? (
+              <View style={s.ktpPreview}>
+                <Image source={{ uri: ktp.uri }} style={s.ktpImage} />
+                <Pressable onPress={() => setKtp(null)} style={s.ktpRemove}>
+                  <Ionicons name="close" size={16} color="#fff" />
                 </Pressable>
-              );
-            })}
-          </View>
+              </View>
+            ) : (
+              <Pressable onPress={pickKtp} style={s.uploadBtn}>
+                <Ionicons name="cloud-upload-outline" size={22} color={colors.primary} />
+                <Text style={s.uploadText}>{isEn ? 'Upload KTP' : 'Unggah KTP'}</Text>
+              </Pressable>
+            )}
+
+            <Text style={s.fieldLabel}>{isEn ? 'NOTES' : 'CATATAN'}</Text>
+            <View style={s.textarea}>
+              <TextInput
+                value={notes}
+                onChangeText={setNotes}
+                placeholder={isEn ? 'Optional' : 'Opsional'}
+                placeholderTextColor={colors.textFaint}
+                multiline
+                numberOfLines={3}
+                style={s.textareaInput}
+              />
+            </View>
+          </>
         )}
 
-        {/* Upload KTP */}
-        <Text style={s.fieldLabel}>{isEn ? 'KTP PHOTO (OPTIONAL)' : 'FOTO KTP (OPSIONAL)'}</Text>
-        {ktp ? (
-          <View style={s.ktpPreview}>
-            <Image source={{ uri: ktp.uri }} style={s.ktpImage} />
-            <Pressable onPress={() => setKtp(null)} style={s.ktpRemove}>
-              <Ionicons name="close" size={16} color="#fff" />
-            </Pressable>
-          </View>
-        ) : (
-          <Pressable onPress={pickKtp} style={s.uploadBtn}>
-            <Ionicons name="cloud-upload-outline" size={22} color={colors.primary} />
-            <Text style={s.uploadText}>{isEn ? 'Upload KTP' : 'Unggah KTP'}</Text>
-          </Pressable>
-        )}
-
-        {/* Catatan */}
-        <Text style={s.fieldLabel}>{isEn ? 'NOTES' : 'CATATAN'}</Text>
-        <View style={s.textarea}>
-          <TextInput
-            value={notes}
-            onChangeText={setNotes}
-            placeholder={isEn ? 'Optional' : 'Opsional'}
-            placeholderTextColor={colors.textFaint}
-            multiline
-            numberOfLines={3}
-            style={s.textareaInput}
+        {isConsultMode ? (
+          <PrimaryButton
+            label={isEn ? 'Consult with Helpdesk' : 'Konsultasi dengan Helpdesk'}
+            icon="chatbubble-ellipses-outline"
+            onPress={goToHelpdesk}
+            style={{ marginTop: spacing.md }}
           />
-        </View>
-
-        <PrimaryButton
-          label={isEn ? 'Create Booking' : 'Buat Booking'}
-          icon="arrow-forward"
-          loading={loading}
-          onPress={submit}
-          style={{ marginTop: spacing.md }}
-        />
+        ) : (
+          <PrimaryButton
+            label={isEn ? 'Create Booking' : 'Buat Booking'}
+            icon="arrow-forward"
+            loading={loading}
+            onPress={submit}
+            style={{ marginTop: spacing.md }}
+          />
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -363,34 +471,28 @@ export default function BookingFormScreen({ route, navigation }) {
 const makeStyles = (c, t) => ({
   screen: { flex: 1, backgroundColor: 'transparent' },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl * 2, gap: spacing.md },
-
   card: {
     backgroundColor: c.surface, borderRadius: radius.md,
     borderWidth: 1, borderColor: c.line, padding: spacing.lg,
   },
   label: { ...t.small, fontSize: 11 },
   value: { ...t.subtitle, fontSize: 14 },
-
   fieldLabel: {
     ...t.small, fontSize: 11, fontWeight: '800',
     letterSpacing: 0.4, color: c.textMuted, marginTop: spacing.sm,
   },
   hint: { ...t.small, fontSize: 11 },
-
-  // ✅ CABOR display
   sportDisplay: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     paddingVertical: spacing.md, paddingHorizontal: spacing.lg,
     backgroundColor: c.primarySoft, borderRadius: radius.md,
-    borderWidth: 1, borderColor: c.primary,
-    marginTop: spacing.xs,
+    borderWidth: 1, borderColor: c.primary, marginTop: spacing.xs,
   },
   sportDisplayText: {
     ...t.subtitle, fontSize: 15, color: c.primary, fontWeight: '900',
     textTransform: 'capitalize',
   },
-
-  chipRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
+  chipRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs, flexWrap: 'wrap' },
   chip: {
     paddingHorizontal: spacing.lg, paddingVertical: 8,
     borderRadius: radius.pill, borderWidth: 1,
@@ -399,7 +501,22 @@ const makeStyles = (c, t) => ({
   chipActive: { backgroundColor: c.primary, borderColor: c.primary },
   chipText: { color: c.textMuted, fontSize: 12, fontWeight: '700' },
   chipTextActive: { color: c.onPrimary },
-
+  multiDayBox: {
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    backgroundColor: c.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: c.line,
+  },
+  multiDayRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  multiDayLabel: { ...t.body, fontSize: 13, flex: 1, fontWeight: '600' },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 6,
+    borderWidth: 2, borderColor: c.line,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  checkboxActive: { backgroundColor: c.primary, borderColor: c.primary },
   dateCell: {
     width: 58, paddingVertical: spacing.md, alignItems: 'center',
     borderRadius: radius.md, borderWidth: 1,
@@ -409,7 +526,6 @@ const makeStyles = (c, t) => ({
   dateDow: { ...t.small, fontSize: 10, textTransform: 'uppercase' },
   dateNum: { color: c.text, fontSize: 18, fontWeight: '900' },
   dateMon: { ...t.small, fontSize: 10 },
-
   slotsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   slot: {
     width: '48%', paddingVertical: spacing.md,
@@ -422,7 +538,6 @@ const makeStyles = (c, t) => ({
   slotText: { ...t.subtitle, fontSize: 13, fontWeight: '700' },
   slotTextDisabled: { textDecorationLine: 'line-through' },
   slotSub: { ...t.small, fontSize: 10 },
-
   uploadBtn: {
     height: 80, borderRadius: radius.md,
     borderWidth: 2, borderColor: c.line, borderStyle: 'dashed',
@@ -430,7 +545,6 @@ const makeStyles = (c, t) => ({
     alignItems: 'center', justifyContent: 'center', gap: 6,
   },
   uploadText: { ...t.subtitle, fontSize: 13, color: c.primary },
-
   ktpPreview: {
     width: 140, height: 100, borderRadius: radius.md,
     overflow: 'hidden', position: 'relative',
@@ -442,13 +556,27 @@ const makeStyles = (c, t) => ({
     backgroundColor: 'rgba(0,0,0,0.7)',
     alignItems: 'center', justifyContent: 'center',
   },
-
   textarea: {
     minHeight: 80, paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm, backgroundColor: c.surface,
     borderRadius: radius.md, borderWidth: 1, borderColor: c.line,
   },
-  textareaInput: {
-    color: c.text, fontSize: 14, textAlignVertical: 'top',
+  textareaInput: { color: c.text, fontSize: 14, textAlignVertical: 'top' },
+  consultBox: {
+    padding: spacing.xl,
+    backgroundColor: c.goldSoft,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: c.gold,
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+  consultTitle: {
+    ...t.subtitle, fontSize: 16, fontWeight: '900',
+    color: c.gold, textAlign: 'center',
+  },
+  consultBody: {
+    ...t.body, fontSize: 13, textAlign: 'center', lineHeight: 19,
   },
 });

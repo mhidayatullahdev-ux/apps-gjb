@@ -1,4 +1,3 @@
-// src/components/FaqSection.js
 import React, { useState } from 'react';
 import {
   View, Text, Pressable, LayoutAnimation, Platform, UIManager,

@@ -1,4 +1,3 @@
-// src/components/OfflineBanner.js
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

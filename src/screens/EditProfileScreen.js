@@ -9,6 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { useTheme, useThemedStyles, spacing, radius } from '../theme';
 import { useAuth } from '../context/AuthContext';
+import { validatePhone } from '../utils/nik';
 import { authApi } from '../api/auth';
 import { PrimaryButton, Notice, Divider } from '../components/common';
 
@@ -37,7 +38,7 @@ export default function EditProfileScreen({ navigation }) {
   const hasPassword = user?.has_password !== false;
 
   const cleanNik = (v) => v.replace(/\D/g, '').slice(0, 16);
-  const cleanPhone = (v) => v.replace(/[^\d+]/g, '').slice(0, 20);
+  const cleanPhone = (v) => v.replace(/[^\d+]/g, '').slice(0, 13);
 
   const pickAvatar = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -62,6 +63,10 @@ export default function EditProfileScreen({ navigation }) {
     // Validasi
     if (!name.trim()) return setProfileError('Nama wajib diisi.');
     if (nik && nik.length !== 16) return setProfileError('NIK harus 16 digit.');
+    if (phone) {
+      const phoneCheck = validatePhone(phone);
+      if (!phoneCheck.valid) return setProfileError(phoneCheck.message);
+    }
 
     setSavingProfile(true);
     try {

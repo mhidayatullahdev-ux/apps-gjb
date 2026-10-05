@@ -1,4 +1,3 @@
-// src/api/facilities.js
 import api from './client';
 
 export const facilitiesApi = {

@@ -30,20 +30,29 @@ export default function MoreScreen({ navigation }) {
 
   const [logoutModal, setLogoutModal] = useState(false);
 
+  const AUTH_ROUTES = ['EditProfile', 'Chat', 'Transactions', 'Reschedule', 'Payment', 'BookingForm'];
+  const goTo = (screen, params) => {
+    if (AUTH_ROUTES.includes(screen) && !isLoggedIn) {
+      navigation.navigate('Login', { returnTo: screen, returnParams: params });
+      return;
+    }
+    navigation.navigate(screen, params);
+  };
+
   const services = [
     {
       id: 'profile',
       icon: 'person-circle-outline',
       title: t('menu.editProfile'),
       desc: t('menu.editProfileDesc'),
-      onPress: () => navigation.navigate('EditProfile'),
+      onPress: () => goTo('EditProfile'),
     },
     {
       id: 'chat',
       icon: 'chatbubble-ellipses-outline',
       title: t('more.chat'),
       desc: t('more.chatDesc'),
-      onPress: () => navigation.navigate('Chat'),
+      onPress: () => goTo('Chat'),
     },
     {
       id: 'helpdesk',
@@ -57,14 +66,7 @@ export default function MoreScreen({ navigation }) {
       icon: 'receipt-outline',
       title: t('menu.transactions'),
       desc: t('menu.transactionsDesc'),
-      onPress: () => navigation.navigate('Transactions'),
-    },
-    {
-      id: 'privacy',
-      icon: 'shield-checkmark-outline',
-      title: 'Kebijakan Privasi',
-      desc: 'Cara kami melindungi data Anda',
-      onPress: () => navigation.navigate('PrivacyPolicy'),
+      onPress: () => goTo('Transactions'),
     },
   ];
 
@@ -135,7 +137,7 @@ export default function MoreScreen({ navigation }) {
             <View style={s.authButtons}>
               <PrimaryButton
                 label={t('more.login')}
-                onPress={() => navigation.navigate('Login')}
+                onPress={() => navigation.navigate('Login', { returnTo: screen, returnParams: params })}
                 style={{ flex: 1 }}
               />
               <PrimaryButton

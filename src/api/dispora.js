@@ -164,7 +164,6 @@ export async function fetchHero() {
 }
 
 export async function fetchPrograms() {
-  // Tidak ada endpoint program di Laravel; ambil dari artikel kalau ada
   try {
     const res = await api.get('/api/articles?page=1', { auth: false });
     const list = res?.data || [];

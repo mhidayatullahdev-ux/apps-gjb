@@ -1,4 +1,3 @@
-// src/components/ErrorBoundary.js
 import React from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import * as Sentry from '@sentry/react-native';

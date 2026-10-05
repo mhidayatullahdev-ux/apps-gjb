@@ -7,13 +7,6 @@ export const chatApi = {
   send: (message) => api.post('/api/chat/messages', { message }),
 };
 
-/**
- * Subscribe ke channel chat user via WebSocket Reverb.
- *
- * @param {number|string} userId
- * @param {(data: object) => void} onMessage - callback saat pesan baru masuk
- * @returns {Promise<() => void>} - fungsi unsubscribe
- */
 export async function subscribeChat(userId, onMessage) {
   const echo = await initEcho();
   if (!echo) {

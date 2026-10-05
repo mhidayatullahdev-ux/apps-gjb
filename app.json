@@ -21,7 +21,8 @@
         "expo-image-picker",
         {
           "photosPermission": "Izinkan $(PRODUCT_NAME) mengakses galeri foto Anda untuk mengunggah gambar.",
-          "cameraPermission": "Izinkan $(PRODUCT_NAME) mengakses kamera Anda untuk mengambil foto."
+          "cameraPermission": "Izinkan $(PRODUCT_NAME) mengakses kamera Anda untuk mengambil foto.",
+          "microphonePermission": false
         }
       ],
       [
@@ -47,7 +48,17 @@
         "backgroundColor": "#FFFFFF"
       },
       "permissions": [
-        "INTERNET"
+        "android.permission.INTERNET",
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO"
       ]
     },
     "web": {
@@ -60,6 +71,12 @@
         "projectId": "02ddc74d-75d2-4875-ab1f-468f02714916"
       }
     },
-    "owner": "dayatdev"
+    "owner": "dayatdev",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/02ddc74d-75d2-4875-ab1f-468f02714916"
+    }
   }
 }

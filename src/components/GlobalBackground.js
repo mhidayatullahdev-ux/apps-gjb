@@ -1,16 +1,9 @@
-// src/components/GlobalBackground.js
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../theme';
 
-/**
- * Background global minimalis:
- * - Gradient transparent (base → transparent → base)
- * - Sangat halus, tidak mengganggu konten
- * - Efek "premium subtle" tanpa pattern
- */
 export default function GlobalBackground({ children }) {
   const { colors, isDark } = useTheme();
 
@@ -21,9 +14,9 @@ export default function GlobalBackground({ children }) {
         colors={
           isDark
             ? [
-                'rgba(213, 28, 41, 0)',      // transparan penuh (base terlihat)
-                'rgba(213, 28, 41, 0.06)',   // merah 6% opacity
-                'rgba(213, 28, 41, 0)',      // transparan penuh
+                'rgba(213, 28, 41, 0)',
+                'rgba(213, 28, 41, 0.06)',
+                'rgba(213, 28, 41, 0)',
               ]
             : [
                 'rgba(213, 28, 41, 0)',

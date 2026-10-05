@@ -1,4 +1,3 @@
-// src/api/bookings.js
 import api, { BASE_URL, getToken } from './client';
 
 export const bookingsApi = {
@@ -17,7 +16,6 @@ export const bookingsApi = {
   cancel: (id) => api.post(`/api/bookings/${id}/cancel`),
   invoiceUrl: (id) => `${BASE_URL}/api/bookings/${id}/invoice`,
 
-  // ✅ Download invoice
   downloadInvoice: async (id) => {
     const token = await getToken();
     return {

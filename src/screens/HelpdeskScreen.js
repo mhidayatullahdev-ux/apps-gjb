@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useThemedStyles, spacing, radius } from '../theme';
 import { useSettings } from '../context/SettingsContext';
 import { useNetwork } from '../context/NetworkContext';
+import { useAuth } from '../context/AuthContext';
 import { chatApi } from '../api/chat';
 import { EmptyState, Loader, PrimaryButton } from '../components/common';
 import { FadeInUp, stagger } from '../components/anim';
@@ -17,6 +18,7 @@ export default function HelpdeskScreen({ navigation }) {
   const { colors } = useTheme();
   const s = useThemedStyles(makeStyles);
   const { whatsappUrl } = useSettings();
+  const { isLoggedIn } = useAuth();
   const { isOnline } = useNetwork();
 
   const [messages, setMessages] = useState([]);
@@ -55,7 +57,13 @@ export default function HelpdeskScreen({ navigation }) {
             label="Buka Live Chat"
             icon="chatbubble-ellipses-outline"
             disabled={!isOnline}
-            onPress={() => navigation.navigate('Chat')}
+            onPress={() => {
+            if (!isLoggedIn) {
+              navigation.navigate('Login', { returnTo: 'Chat' });
+              return;
+            }
+            navigation.navigate('Chat');
+          }}
           />
           {whatsappUrl ? (
             <PrimaryButton

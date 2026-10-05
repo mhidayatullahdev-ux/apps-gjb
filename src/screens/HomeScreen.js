@@ -34,77 +34,93 @@ export default function HomeScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [autoRetryCount, setAutoRetryCount] = useState(0);
 
+  // ============================================================
+  // LOAD DATA — request dipisah, satu gagal tidak ganggu yang lain
+  // ============================================================
   const load = useCallback(async () => {
-    // Jangan skip kalau online check belum siap — coba saja dulu
+    console.log('[Home] load start. isOnline:', isOnline);
+
+    // ---- ARTICLES ----
     try {
-      console.log('[Home] load start. isOnline:', isOnline);
-
-      const [artRes, faqRes] = await Promise.allSettled([
-        articlesApi.list(),
-        faqsApi.list(),
-      ]);
-
-      if (artRes.status === 'fulfilled') {
-        const rawArticles = artRes.value?.data || [];
-        const items = rawArticles.map((a) => ({
-          id: a.id,
-          title: a.title,
-          slug: a.slug,
-          excerpt: a.excerpt,
-          content: a.content,
-          body: a.content,
-          thumbnail: a.thumbnail_url || a.thumbnail,
-          image: a.thumbnail_url || a.thumbnail,
-          category: 'Berita',
-          date: a.published_at
-            ? new Date(a.published_at).toLocaleDateString(
-                lang === 'en' ? 'en-GB' : 'id-ID',
-                { day: 'numeric', month: 'long', year: 'numeric' }
-              )
-            : '',
-          published_at: a.published_at,
-        }));
-        console.log('[Home] articles loaded:', items.length);
-        setArticles(items);
-      } else {
-        console.warn('[Home] articles fetch FAILED:', artRes.reason?.message);
-      }
-
-      if (faqRes.status === 'fulfilled') {
-        const faqItems = faqRes.value?.data || [];
-        console.log('[Home] faqs loaded:', faqItems.length);
-        setFaqs(faqItems);
-      } else {
-        console.warn('[Home] faqs fetch FAILED:', faqRes.reason?.message);
-      }
-
-      setHasLoadedOnce(true);
-    } catch (e) {
-      console.warn('[Home] load error:', e);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+      const artRes = await articlesApi.list();
+      const rawArticles = artRes?.data || [];
+      const items = rawArticles.map((a) => ({
+        id: a.id,
+        title: a.title,
+        slug: a.slug,
+        excerpt: a.excerpt,
+        content: a.content,
+        body: a.content,
+        thumbnail: a.thumbnail_url || a.thumbnail,
+        image: a.thumbnail_url || a.thumbnail,
+        category: 'Berita',
+        date: a.published_at
+          ? new Date(a.published_at).toLocaleDateString(
+              lang === 'en' ? 'en-GB' : 'id-ID',
+              { day: 'numeric', month: 'long', year: 'numeric' }
+            )
+          : '',
+        published_at: a.published_at,
+      }));
+      console.log('[Home] ✅ articles loaded:', items.length);
+      setArticles(items);
+    } catch (err) {
+      console.warn('[Home] ❌ articles FAILED:', err?.message, '| status:', err?.status);
+      // JANGAN setArticles([]) — biar data lama (kalau ada) tidak ketimpa
     }
+
+    // ---- FAQS ----
+    try {
+      const faqRes = await faqsApi.list();
+      const faqItems = faqRes?.data || [];
+      console.log('[Home] ✅ faqs loaded:', faqItems.length);
+      setFaqs(faqItems);
+    } catch (err) {
+      console.warn('[Home] ❌ faqs FAILED:', err?.message, '| status:', err?.status);
+      // JANGAN setFaqs([]) juga
+    }
+
+    setHasLoadedOnce(true);
+    setLoading(false);
+    setRefreshing(false);
   }, [lang, isOnline]);
 
-  // Initial load
+  // ============================================================
+  // INITIAL LOAD
+  // ============================================================
   useEffect(() => {
     load();
   }, [load]);
 
-  // ✅ Refetch saat Beranda difokus (pindah tab / kembali ke beranda)
+  // ============================================================
+  // AUTO RETRY — maksimal 2x, hindari infinite loop
+  // ============================================================
+  useEffect(() => {
+    if (!hasLoadedOnce) return;
+    if (articles.length > 0 && faqs.length > 0) return;
+    if (!isOnline) return;
+    if (autoRetryCount >= 2) return;
+
+    console.log('[Home] auto-retry', autoRetryCount + 1, 'of 2 in 3s');
+    const timer = setTimeout(() => {
+      setAutoRetryCount((c) => c + 1);
+      load();
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [hasLoadedOnce, articles.length, faqs.length, isOnline, load, autoRetryCount]);
+
+  // ============================================================
+  // FOCUS REFETCH — tiap balik ke Beranda, kalau data kosong retry
+  // ============================================================
   useFocusEffect(
     useCallback(() => {
-      // Skip fetch saat pertama kali karena sudah di-fetch useEffect di atas
-      if (!hasLoadedOnce) return;
-
-      // Kalau data kosong, coba fetch lagi
       if (articles.length === 0 || faqs.length === 0) {
-        console.log('[Home] focus refetch because data empty');
+        console.log('[Home] focus refetch (data empty)');
         load();
       }
-    }, [hasLoadedOnce, articles.length, faqs.length, load])
+    }, [articles.length, faqs.length, load])
   );
 
   const onRefresh = () => {
@@ -112,6 +128,9 @@ export default function HomeScreen({ navigation }) {
     load();
   };
 
+  // ============================================================
+  // DERIVED DATA
+  // ============================================================
   const heroArticles = articles.slice(0, 3).map((a) => ({
     id: a.id,
     type: 'NEWS',
@@ -149,9 +168,12 @@ export default function HomeScreen({ navigation }) {
     if (i !== quoteIndex) setQuoteIndex(i);
   };
 
-  // ✅ Guard: kalau width 0 (belum ready), jangan render hero
+  // Guard: kalau width 0 (belum ready), jangan render hero
   const isWidthReady = width > 0;
 
+  // ============================================================
+  // RENDER
+  // ============================================================
   return (
     <ScrollView
       style={s.screen}

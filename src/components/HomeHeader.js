@@ -34,6 +34,17 @@ export default function HomeHeader({ navigation, onOpenNotifications }) {
     setMenuOpen(true);
   };
 
+  const goFavorites = () => {
+    if (!isLoggedIn) return navigation.navigate('Login');
+    navigation.navigate('Favorites');
+  };
+
+  const goNotifications = () => {
+    if (!isLoggedIn) return navigation.navigate('Login');
+    if (onOpenNotifications) onOpenNotifications();
+    else navigation.navigate('Notifications');
+  };
+
   const menuItems = [
     { id: 'editProfile', icon: 'person-circle-outline', label: t('menu.editProfile'), route: 'EditProfile' },
     { id: 'transactions', icon: 'receipt-outline', label: t('menu.transactions'), route: 'Transactions' },
@@ -41,15 +52,8 @@ export default function HomeHeader({ navigation, onOpenNotifications }) {
     { id: 'chat', icon: 'chatbubble-ellipses-outline', label: t('menu.chat'), route: 'Chat' },
   ];
 
-  const handleMenuPress = async (item) => {
+  const handleMenuPress = (item) => {
     setMenuOpen(false);
-
-    if (item.action === 'tour') {
-      await resetTour();
-      setTimeout(() => startTour(), 400);
-      return;
-    }
-
     setTimeout(() => navigation.navigate(item.route), 150);
   };
 
@@ -71,11 +75,11 @@ export default function HomeHeader({ navigation, onOpenNotifications }) {
           <Text style={s.searchText} numberOfLines={1}>{t('header.search')}</Text>
         </Pressable>
 
-        <Pressable onPress={() => navigation.navigate('Favorites')} style={s.iconBtn} hitSlop={6}>
+        <Pressable onPress={goFavorites} style={s.iconBtn} hitSlop={6}>
           <Ionicons name="heart-outline" size={22} color={colors.text} />
         </Pressable>
 
-        <Pressable onPress={onOpenNotifications} style={s.iconBtn} hitSlop={6}>
+        <Pressable onPress={goNotifications} style={s.iconBtn} hitSlop={6}>
           <Ionicons name="notifications-outline" size={22} color={colors.text} />
           {unreadCount > 0 ? (
             <View style={s.badge}>

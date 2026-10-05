@@ -125,11 +125,7 @@ export default function FacilityDetailScreen({ route, navigation }) {
   };
 
   const openBooking = (court, slot) => {
-    if (!isLoggedIn) {
-      return navigation.navigate('Login');
-    }
-    haptic.light();
-    navigation.navigate('BookingForm', {
+    const bookingParams = {
       facility: { id: facility.id, name: facility.name },
       court: {
         id: court.id,
@@ -141,7 +137,16 @@ export default function FacilityDetailScreen({ route, navigation }) {
       defaultStart: slot?.start_time,
       defaultEnd: slot?.end_time,
       purpose: 'Latihan',
-    });
+    };
+
+    if (!isLoggedIn) {
+      return navigation.navigate('Login', {
+        returnTo: 'BookingForm',
+        returnParams: bookingParams,
+      });
+    }
+    haptic.light();
+    navigation.navigate('BookingForm', bookingParams);
   };
 
   const onToggleFavorite = () => {

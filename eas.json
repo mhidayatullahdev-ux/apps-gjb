@@ -12,33 +12,38 @@
       },
       "ios": {
         "simulator": true
-      }
+      },
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk",
         "image": "ubuntu-22.04-jdk-17-ndk-r21e"
-      }
+      },
+      "channel": "preview"
     },
     "ios-simulator": {
       "distribution": "internal",
       "ios": {
         "simulator": true
-      }
+      },
+      "channel": "ios-simulator"
     },
     "ios-device": {
       "distribution": "internal",
       "ios": {
         "simulator": false
-      }
+      },
+      "channel": "ios-device"
     },
     "production": {
       "android": {
         "buildType": "app-bundle",
         "image": "ubuntu-22.04-jdk-17-ndk-r21e"
       },
-      "ios": {}
+      "ios": {},
+      "channel": "production"
     }
   },
   "submit": {

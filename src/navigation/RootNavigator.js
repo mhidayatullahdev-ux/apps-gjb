@@ -55,62 +55,38 @@ function Tabs() {
   );
 }
 
-function GuestStack() {
-  const { colors } = useTheme();
-  const { t } = useI18n();
-  return (
-    <Stack.Navigator
-      initialRouteName="Welcome"
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.base },
-        headerTintColor: colors.text,
-        headerTitleStyle: { fontWeight: '800', fontSize: 16 },
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: 'transparent' },
-      }}
-    >
-      <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Register" component={RegisterScreen} options={{ title: t('more.register') }} />
-      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifikasi' }} />
-      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: 'Kebijakan Privasi' }} />
-      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Lupa Password' }} />
-      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Reset Password' }} />
-    </Stack.Navigator>
-  );
-}
-
-function ProfileSetupStack() {
-  const { colors } = useTheme();
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: 'transparent' },
-      }}
-    >
-      <Stack.Screen name="ProfileComplete" component={ProfileCompleteScreen} />
-    </Stack.Navigator>
-  );
-}
-
-function AppStack() {
+// MainStack: bisa diakses guest maupun user login.
+// Screens yang butuh login diproteksi di handler tombol masing-masing.
+function MainStack() {
   const { colors } = useTheme();
   const { t, lang } = useI18n();
   return (
     <Stack.Navigator
+      initialRouteName="Tabs"
       screenOptions={{
         headerStyle: { backgroundColor: colors.base },
         headerTintColor: colors.text,
         headerTitleStyle: { fontWeight: '800', fontSize: 16 },
         headerShadowVisible: false,
-        contentStyle: { backgroundColor: 'transparent' },
+        contentStyle: { backgroundColor: colors.base },
       }}
     >
+      {/* Tabs utama — selalu bisa diakses */}
       <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
+
+      {/* Detail screens — bisa diakses guest */}
       <Stack.Screen name="FacilityDetail" component={FacilityDetailScreen} options={{ title: t('facilities.title') }} />
-      <Stack.Screen name="BookingForm" component={BookingFormScreen} options={{ title: lang === 'en' ? 'New Booking' : 'Buat Booking' }} />
       <Stack.Screen name="NewsDetail" component={NewsDetailScreen} options={{ title: t('news.detail') }} />
+
+      {/* Auth screens */}
+      <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Register" component={RegisterScreen} options={{ title: t('more.register') }} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Lupa Password' }} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Reset Password' }} />
+
+      {/* Screens yang butuh login — guard di handler tombol */}
+      <Stack.Screen name="BookingForm" component={BookingFormScreen} options={{ title: lang === 'en' ? 'New Booking' : 'Buat Booking' }} />
       <Stack.Screen name="Chat" component={ChatScreen} options={{ title: t('chat.title') }} />
       <Stack.Screen name="Helpdesk" component={HelpdeskScreen} options={{ title: t('helpdesk.title') }} />
       <Stack.Screen name="Payment" component={PaymentScreen} options={{ title: t('pay.title') }} />
@@ -120,6 +96,21 @@ function AppStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: lang === 'en' ? 'Notifications' : 'Notifikasi' }} />
       <Stack.Screen name="Favorites" component={FavoritesScreen} options={{ title: lang === 'en' ? 'Favorites' : 'Favorit' }} />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: 'Kebijakan Privasi' }} />
+    </Stack.Navigator>
+  );
+}
+
+// ProfileSetupStack: hanya untuk user login yang belum lengkapi profil.
+function ProfileSetupStack() {
+  const { colors } = useTheme();
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.base },
+      }}
+    >
+      <Stack.Screen name="ProfileComplete" component={ProfileCompleteScreen} />
     </Stack.Navigator>
   );
 }
@@ -169,12 +160,10 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer ref={setNavigationRef} theme={navTheme} onStateChange={onNavigationStateChange}>
-      {!isLoggedIn ? (
-        <GuestStack />
-      ) : !isProfileComplete ? (
+      {isLoggedIn && !isProfileComplete ? (
         <ProfileSetupStack />
       ) : (
-        <AppStack />
+        <MainStack />
       )}
     </NavigationContainer>
   );

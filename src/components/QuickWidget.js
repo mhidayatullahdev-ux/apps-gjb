@@ -5,11 +5,15 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useTheme, useThemedStyles, spacing, radius } from '../theme';
 import { useI18n } from '../i18n/i18n';
+import { useAuth } from '../context/AuthContext';
 import { PressableScale } from './anim';
+
+const AUTH_ROUTES = ['Transactions', 'Chat', 'EditProfile'];
 
 export default function QuickWidget({ navigation }) {
   const { colors } = useTheme();
   const { t } = useI18n();
+  const { isLoggedIn } = useAuth();
   const s = useThemedStyles(makeStyles);
 
   const WIDGET_ITEMS = [
@@ -26,6 +30,10 @@ export default function QuickWidget({ navigation }) {
   const handlePress = (item) => {
     if (!item.route) {
       Alert.alert('Segera hadir', 'Fitur ini akan tersedia di update berikutnya.');
+      return;
+    }
+    if (AUTH_ROUTES.includes(item.route) && !isLoggedIn) {
+      navigation.navigate('Login', { returnTo: item.route });
       return;
     }
     navigation.navigate(item.route);
