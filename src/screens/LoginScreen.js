@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, TextInput, ScrollView, Pressable,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,7 +12,19 @@ import { useI18n } from '../i18n/i18n';
 import { useAuth } from '../context/AuthContext';
 import { PrimaryButton, Notice } from '../components/common';
 import { useGoogleAuth } from '../hooks/useGoogleAuth';
-import { toast } from '../utils/toast';
+
+// Safe toast — kalau utils/toast tidak ada, fallback ke Alert
+let safeToast;
+try {
+  const t = require('../utils/toast');
+  safeToast = t.toast;
+} catch {
+  safeToast = {
+    success: (title, msg) => Alert.alert(title, msg || ''),
+    error: (title, msg) => Alert.alert(title, msg || ''),
+    info: (title, msg) => Alert.alert(title, msg || ''),
+  };
+}
 
 const REMEMBER_KEY = 'dispora.rememberMe';
 
@@ -33,17 +45,25 @@ export default function LoginScreen({ navigation, route }) {
   const { promptGoogleLogin, loading: googleLoading, error: googleError } = useGoogleAuth();
   const displayError = error || googleError;
 
-  // ✅ Auto-redirect setelah login sukses
+  // ✅ Auto-redirect setelah login sukses — SAFE
   useEffect(() => {
-    if (!isLoggedIn || !isProfileComplete) return;
+    if (!isLoggedIn) return;
     if (hasNavigated.current) return;
-    hasNavigated.current = true;
 
-    const returnTo = route?.params?.returnTo;
-    const returnParams = route?.params?.returnParams;
+    // Kalau profile belum lengkap, JANGAN reset — biarkan RootNavigator
+    // otomatis ganti ke ProfileSetupStack.
+    if (!isProfileComplete) {
+      hasNavigated.current = true;
+      return;
+    }
+
+    hasNavigated.current = true;
 
     const timer = setTimeout(() => {
       try {
+        const returnTo = route?.params?.returnTo;
+        const returnParams = route?.params?.returnParams;
+
         if (returnTo) {
           navigation.reset({
             index: 1,
@@ -59,7 +79,7 @@ export default function LoginScreen({ navigation, route }) {
           });
         }
       } catch (e) {
-        console.warn('[Login] redirect error:', e);
+        console.warn('[Login] redirect skipped:', e?.message);
       }
     }, 250);
 
@@ -106,11 +126,19 @@ export default function LoginScreen({ navigation, route }) {
         await clearCredentials();
       }
 
-      toast.success('Login Berhasil', 'Selamat datang kembali!');
+      try {
+        safeToast.success('Login Berhasil', 'Selamat datang kembali!');
+      } catch (e) {
+        console.warn('[Login] toast error:', e);
+      }
     } catch (e) {
       const msg = e.message || t('auth.errNotFound');
       setError(msg);
-      toast.error('Login Gagal', msg);
+      try {
+        safeToast.error('Login Gagal', msg);
+      } catch (err) {
+        console.warn('[Login] toast error:', err);
+      }
     } finally {
       setLoading(false);
     }

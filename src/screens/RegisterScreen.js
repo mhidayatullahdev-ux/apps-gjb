@@ -113,7 +113,7 @@ export default function RegisterScreen({ navigation }) {
         >
           <Ionicons name="logo-google" size={18} color={colors.text} />
           <Text style={s.googleText}>
-            {googleLoading ? t('common.loading') : t('auth.googleLogin')}
+            {googleLoading ? t('common.loading') : t('auth.googleRegister')}
           </Text>
         </Pressable>
 

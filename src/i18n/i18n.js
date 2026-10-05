@@ -40,6 +40,7 @@ const dict = {
     // ============ AUTH ============
     'auth.or': 'atau',
     'auth.googleLogin': 'Masuk dengan Google',
+    'auth.googleRegister': 'Daftar dengan Google',
     'auth.loginTitle': 'Masuk',
     'auth.loginSubtitle': 'Masuk untuk memesan fasilitas dan melacak tiket.',
     'auth.registerTitle': 'Daftar',
@@ -273,6 +274,7 @@ const dict = {
     // ============ AUTH ============
     'auth.or': 'or',
     'auth.googleLogin': 'Sign in with Google',
+    'auth.googleRegister': 'Sign up with Google',
     'auth.loginTitle': 'Sign in',
     'auth.loginSubtitle': 'Sign in to book facilities and track tickets.',
     'auth.registerTitle': 'Sign up',
