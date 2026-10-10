@@ -9,6 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useTheme, useThemedStyles, spacing, radius } from '../theme';
 import { useI18n } from '../i18n/i18n';
 import { useSettings } from '../context/SettingsContext';
+import { useAuth } from '../context/AuthContext';
 import { useNetwork } from '../context/NetworkContext';
 import { articlesApi } from '../api/articles';
 import { faqsApi } from '../api/faqs';
@@ -24,6 +25,7 @@ export default function HomeScreen({ navigation }) {
   const { colors } = useTheme();
   const { t, lang } = useI18n();
   const settings = useSettings();
+  const { bookingQuota } = useAuth();
   const { isOnline } = useNetwork();
   const s = useThemedStyles(makeStyles);
   const { width } = useWindowDimensions();
@@ -192,6 +194,35 @@ export default function HomeScreen({ navigation }) {
         onOpenNotifications={() => navigation.navigate('Notifications')}
       />
 
+      {/* ✅ Banner Quota Booking */}
+      {bookingQuota && bookingQuota.can_book === false ? (
+        <View style={s.quotaBanner}>
+          <View style={s.quotaIconBox}>
+            <Ionicons name="lock-closed" size={20} color="#8B6914" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.quotaTitle}>
+              {lang === 'en' ? 'Booking Unavailable' : 'Booking Tidak Tersedia'}
+            </Text>
+            <Text style={s.quotaBody}>
+              {bookingQuota.message ||
+                (lang === 'en'
+                  ? 'You can only book once every 7 days.'
+                  : 'Anda hanya bisa booking 1x setiap 7 hari.')}
+            </Text>
+            {bookingQuota.next_available_at ? (
+              <Text style={s.quotaDate}>
+                {lang === 'en' ? 'Available again: ' : 'Bisa booking lagi: '}
+                {new Date(bookingQuota.next_available_at).toLocaleDateString(
+                  lang === 'en' ? 'en-GB' : 'id-ID',
+                  { day: 'numeric', month: 'long', year: 'numeric' }
+                )}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+
       {!isOnline ? (
         <View style={s.offlineWrap}>
           <Ionicons name="cloud-offline-outline" size={18} color={colors.danger} />
@@ -246,7 +277,7 @@ export default function HomeScreen({ navigation }) {
       <QuickWidget navigation={navigation} />
 
       {/* Kutipan */}
-      {quotes.length > 0 ? (
+      {false ? (
         <>
           <ScrollView
             horizontal
@@ -331,6 +362,30 @@ export default function HomeScreen({ navigation }) {
 
 const makeStyles = (c, t) => ({
   screen: { flex: 1, backgroundColor: 'transparent' },
+  quotaBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md,
+    marginHorizontal: spacing.lg, marginBottom: spacing.md,
+    padding: spacing.lg,
+    backgroundColor: '#F2B705' + '15',
+    borderRadius: radius.md,
+    borderWidth: 1, borderColor: '#F2B705',
+  },
+  quotaIconBox: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#F2B705' + '30',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  quotaTitle: {
+    color: '#8B6914', fontSize: 13, fontWeight: '900',
+  },
+  quotaBody: {
+    color: '#8B6914', fontSize: 12, lineHeight: 18, marginTop: 3,
+  },
+  quotaDate: {
+    color: '#8B6914', fontSize: 11, fontWeight: '700',
+    marginTop: 4, fontStyle: 'italic',
+  },
+
   offlineWrap: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     marginHorizontal: spacing.lg, marginBottom: spacing.md,

@@ -23,11 +23,13 @@ export default function RegisterScreen({ navigation }) {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [visibleFields, setVisibleFields] = useState({});
 
   const { promptGoogleLogin, loading: googleLoading, error: googleError } = useGoogleAuth();
   const displayError = error || googleError;
 
   const set = (key) => (value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const toggleField = (key) => setVisibleFields((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const submit = async () => {
     setError('');
@@ -84,11 +86,20 @@ export default function RegisterScreen({ navigation }) {
                 onChangeText={set(f.key)}
                 placeholder={f.placeholder}
                 placeholderTextColor={colors.textFaint}
-                secureTextEntry={!!f.secure}
+                secureTextEntry={!!f.secure && !visibleFields[f.key]}
                 keyboardType={f.keyboardType}
                 autoCapitalize={f.autoCapitalize || 'sentences'}
                 style={s.input}
               />
+              {f.secure ? (
+                <Pressable onPress={() => toggleField(f.key)} hitSlop={8}>
+                  <Ionicons
+                    name={visibleFields[f.key] ? 'eye-off-outline' : 'eye-outline'}
+                    size={17}
+                    color={colors.textFaint}
+                  />
+                </Pressable>
+              ) : null}
             </View>
           </View>
         ))}

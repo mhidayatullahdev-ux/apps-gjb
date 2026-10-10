@@ -12,3 +12,9 @@ npm-debug.*
 .DS_Store
 ios/
 android/
+
+# Backup folders
+.backup-*/
+*.bak
+*.bak-*
+

@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { ensureGalleryPermission } from '../utils/permissions';
 
 import { useTheme, useThemedStyles, spacing, radius } from '../theme';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +22,7 @@ export default function EditProfileScreen({ navigation }) {
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
+  const [address, setAddress] = useState(user?.address || '');
   const [nik, setNik] = useState(user?.nik || '');
   const [gender, setGender] = useState(user?.gender || '');
   const [avatar, setAvatar] = useState(null);
@@ -41,11 +43,12 @@ export default function EditProfileScreen({ navigation }) {
   const cleanPhone = (v) => v.replace(/[^\d+]/g, '').slice(0, 13);
 
   const pickAvatar = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Izin diperlukan', 'Izinkan akses galeri untuk ganti foto profil.');
-      return;
-    }
+    const ok = await ensureGalleryPermission({
+      title: 'Izin Galeri Diperlukan',
+      message: 'Aplikasi membutuhkan akses galeri untuk ganti foto profil. Buka pengaturan HP dan aktifkan izin.',
+    });
+    if (!ok) return;
+
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
@@ -79,6 +82,7 @@ export default function EditProfileScreen({ navigation }) {
         phone: phone.trim() || null,
         nik: nik.trim() || null,
         gender: gender || null,
+        address: address.trim() || null,
       };
 
       if (avatar) {
@@ -234,6 +238,28 @@ export default function EditProfileScreen({ navigation }) {
             </View>
           </View>
 
+
+        {/* Alamat */}
+        <View style={s.field}>
+          <Text style={s.label}>Alamat</Text>
+          <View style={[s.inputBox, s.inputBoxMultiline]}>
+            <Ionicons
+              name="location-outline"
+              size={17}
+              color={colors.textFaint}
+              style={{ marginTop: 4 }}
+            />
+            <TextInput
+              value={address}
+              onChangeText={setAddress}
+              placeholder="Alamat lengkap"
+              placeholderTextColor={colors.textFaint}
+              style={[s.input, s.inputMultiline]}
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+        </View>
           {/* NIK */}
           <View style={s.field}>
             <Text style={s.label}>NIK (16 digit)</Text>
@@ -401,9 +427,15 @@ const makeStyles = (c, t) => ({
   },
   sectionTitle: { ...t.subtitle, fontSize: 15, fontWeight: '900' },
 
-  field: { gap: 6, marginTop: spacing.md },
-  label: { ...t.small, fontSize: 12, color: c.textMuted, fontWeight: '700' },
+  field: { gap: 6, marginTop: spacing.lg },
+  label: { ...t.small, fontSize: 12, color: c.textMuted, fontWeight: '700', marginBottom: 6 },
   hint: { ...t.small, fontSize: 10, textAlign: 'right', marginTop: 2 },
+  inputBoxMultiline: {
+    minHeight: 80, alignItems: 'flex-start', paddingVertical: 12,
+  },
+  inputMultiline: {
+    minHeight: 50, textAlignVertical: 'top',
+  },
   inputBox: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     height: 50, paddingHorizontal: spacing.lg,

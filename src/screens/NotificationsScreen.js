@@ -9,8 +9,8 @@ import { EmptyState, Loader, PrimaryButton } from '../components/common';
 import { FadeInUp, stagger } from '../components/anim';
 
 const ICONS = {
-  payment_approved: 'checkmark-circle',
-  payment_rejected: 'close-circle',
+  booking_verified: 'checkmark-circle',
+  booking_expired: 'time-outline',
   booking_rejected: 'close-circle',
   chat_reply: 'chatbubble-ellipses',
 };

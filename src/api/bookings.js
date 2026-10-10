@@ -10,11 +10,35 @@ export const bookingsApi = {
   store: (formData, idempotencyKey) => api.post('/api/bookings', formData, {
     headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
   }),
+
+  // ✅ Batch: booking beberapa slot sekaligus (satu checkout, satu pembayaran)
+  storeBatch: (payload, idempotencyKey) =>
+    api.post('/api/bookings/batch', payload, {
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
+    }),
+
+  // ✅ Batch multipart (kalau kirim KTP)
+  storeBatchMultipart: (formData, idempotencyKey) =>
+    api.post('/api/bookings/batch', formData, {
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
+    }),
+
+  // ✅ Detail grup booking
+  showGroup: (groupCode) => api.get(`/api/bookings/group/${groupCode}`),
+
   uploadPayment: (id, formData) => api.post(`/api/bookings/${id}/payment`, formData),
   rescheduleTerms: () => api.get('/api/reschedule-terms', { auth: false }),
   reschedule: (id, payload) => api.post(`/api/bookings/${id}/reschedule`, payload),
   cancel: (id) => api.post(`/api/bookings/${id}/cancel`),
   invoiceUrl: (id) => `${BASE_URL}/api/bookings/${id}/invoice`,
+
+  downloadGroupInvoice: async (groupCode) => {
+    const token = await getToken();
+    return {
+      url: `${BASE_URL}/api/bookings/group/${groupCode}/invoice`,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    };
+  },
 
   downloadInvoice: async (id) => {
     const token = await getToken();

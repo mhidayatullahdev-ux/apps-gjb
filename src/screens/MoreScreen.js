@@ -33,7 +33,7 @@ export default function MoreScreen({ navigation }) {
   const AUTH_ROUTES = ['EditProfile', 'Chat', 'Transactions', 'Reschedule', 'Payment', 'BookingForm'];
   const goTo = (screen, params) => {
     if (AUTH_ROUTES.includes(screen) && !isLoggedIn) {
-      navigation.navigate('Login', { returnTo: screen, returnParams: params });
+      navigation.navigate('Login');
       return;
     }
     navigation.navigate(screen, params);
@@ -137,7 +137,7 @@ export default function MoreScreen({ navigation }) {
             <View style={s.authButtons}>
               <PrimaryButton
                 label={t('more.login')}
-                onPress={() => navigation.navigate('Login', { returnTo: screen, returnParams: params })}
+                onPress={() => navigation.navigate('Login')}
                 style={{ flex: 1 }}
               />
               <PrimaryButton

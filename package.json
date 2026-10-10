@@ -52,6 +52,7 @@
     "react-native-screens": "3.31.1",
     "react-native-svg": "15.2.0",
     "react-native-toast-message": "^2.5.2",
+    "react-native-view-shot": "3.8.0",
     "semver": "^7.8.5"
   },
   "devDependencies": {

@@ -2,15 +2,18 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, ScrollView, Pressable,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useTheme, useThemedStyles, spacing, radius } from '../theme';
 import { useI18n } from '../i18n/i18n';
 import { useAuth } from '../context/AuthContext';
 import { PrimaryButton, Notice } from '../components/common';
 import { extractBirthDateFromNik, validatePhone } from '../utils/nik';
+
+const PENDING_ADDRESS_KEY = 'dispora.pendingAddress';
 
 export default function ProfileCompleteScreen() {
   const { colors } = useTheme();
@@ -19,52 +22,101 @@ export default function ProfileCompleteScreen() {
   const { user, completeProfile, logout } = useAuth();
 
   const [form, setForm] = useState({
-    nik: '',
-    phone: '',
-    gender: '',
-    birth_date: '',
+    name: user?.name || '',
+    nik: user?.nik || '',
+    address: user?.address || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    birth_date: user?.birth_date || '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Load pending address kalau ada (dari percobaan sebelumnya)
+  useEffect(() => {
+    (async () => {
+      try {
+        const pending = await AsyncStorage.getItem(PENDING_ADDRESS_KEY);
+        if (pending && !form.address) {
+          setForm((prev) => ({ ...prev, address: pending }));
+        }
+      } catch {}
+    })();
+  }, []);
 
   const set = (key) => (value) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const cleanNik = (v) => v.replace(/\D/g, '').slice(0, 16);
   const cleanPhone = (v) => v.replace(/[^\d+]/g, '').slice(0, 13);
+  const cleanDate = (v) => v.replace(/[^\d-]/g, '').slice(0, 10);
 
-  // Auto-fill tanggal lahir dari NIK (gender TIDAK auto-generate)
+  const dobFromNik = form.nik.length === 16 ? extractBirthDateFromNik(form.nik) : null;
+
+  // Auto-fill birth_date dari NIK (kalau user belum edit manual)
   useEffect(() => {
-    if (form.nik.length !== 16) return;
-    const bd = extractBirthDateFromNik(form.nik);
-    if (bd) {
-      setForm((prev) => ({ ...prev, birth_date: bd }));
-    }
-  }, [form.nik]);
+    if (!dobFromNik) return;
+    setForm((prev) => {
+      if (!prev.birth_date || prev.birth_date === dobFromNik) {
+        return { ...prev, birth_date: dobFromNik };
+      }
+      return prev;
+    });
+  }, [dobFromNik]);
 
   const submit = async () => {
     setError('');
-    const nik = form.nik.trim();
 
-    if (nik.length !== 16) return setError('NIK harus 16 digit angka.');
+    if (!form.name.trim()) return setError('Nama wajib diisi.');
+    if (form.nik.length !== 16) return setError('NIK harus 16 digit angka.');
+    if (!form.address.trim()) return setError('Alamat wajib diisi.');
+    if (!form.email.trim()) return setError('Email wajib diisi.');
 
     const phoneCheck = validatePhone(form.phone);
     if (!phoneCheck.valid) return setError(phoneCheck.message);
 
-    if (!['L', 'P'].includes(form.gender)) return setError('Pilih jenis kelamin.');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.birth_date)) {
-      return setError('Tanggal lahir tidak valid (format: YYYY-MM-DD).');
-    }
-
     setLoading(true);
+
+    const birthDate = extractBirthDateFromNik(form.nik);
+
+    const payloadWithAddress = {
+      name: form.name.trim(),
+      nik: form.nik,
+      address: form.address.trim(),
+      email: form.email.trim().toLowerCase(),
+      phone: form.phone.trim(),
+      birth_date: form.birth_date || birthDate || undefined,
+    };
+
+    const payloadWithoutAddress = { ...payloadWithAddress };
+    delete payloadWithoutAddress.address;
+
     try {
-      await completeProfile({
-        nik,
-        phone: form.phone.trim(),
-        gender: form.gender,
-        birth_date: form.birth_date,
-      });
+      await completeProfile(payloadWithAddress);
+      await AsyncStorage.removeItem(PENDING_ADDRESS_KEY).catch(() => {});
     } catch (e) {
-      setError(e.message || 'Gagal menyimpan.');
+      const msg = String(e.message || '').toLowerCase();
+      // Cek apakah error karena field address belum ada di BE
+      const isAddressError =
+        e.status === 422 &&
+        (msg.includes('address') || msg.includes('alamat') || msg === '');
+
+      if (isAddressError) {
+        // Retry tanpa address
+        try {
+          await completeProfile(payloadWithoutAddress);
+          // Simpan address lokal untuk sinkron nanti
+          await AsyncStorage.setItem(PENDING_ADDRESS_KEY, form.address.trim()).catch(() => {});
+          Alert.alert(
+            'Berhasil',
+            'Profil tersimpan. Alamat akan tersinkron otomatis setelah update berikutnya.',
+            [{ text: 'OK' }]
+          );
+        } catch (e2) {
+          setError(e2.message || 'Gagal menyimpan.');
+        }
+      } else {
+        setError(e.message || 'Gagal menyimpan.');
+      }
     } finally {
       setLoading(false);
     }
@@ -83,7 +135,22 @@ export default function ProfileCompleteScreen() {
 
         {error ? <Notice text={error} tone="primary" icon="alert-circle-outline" /> : null}
 
-        {/* NIK */}
+        {/* 1. Nama Lengkap */}
+        <View style={s.field}>
+          <Text style={s.label}>Nama Lengkap</Text>
+          <View style={s.inputBox}>
+            <Ionicons name="person-outline" size={17} color={colors.textFaint} />
+            <TextInput
+              value={form.name}
+              onChangeText={set('name')}
+              placeholder="Nama lengkap"
+              placeholderTextColor={colors.textFaint}
+              style={s.input}
+            />
+          </View>
+        </View>
+
+        {/* 2. NIK */}
         <View style={s.field}>
           <Text style={s.label}>NIK (16 digit)</Text>
           <View style={s.inputBox}>
@@ -101,9 +168,69 @@ export default function ProfileCompleteScreen() {
           <Text style={s.hint}>{form.nik.length}/16</Text>
         </View>
 
-        {/* No HP */}
+        {/* Tanggal Lahir — auto dari NIK, bisa edit */}
         <View style={s.field}>
-          <Text style={s.label}>Nomor HP (10-13 digit)</Text>
+          <Text style={s.label}>Tanggal Lahir (YYYY-MM-DD)</Text>
+          <View style={s.inputBox}>
+            <Ionicons name="calendar-outline" size={17} color={colors.textFaint} />
+            <TextInput
+              value={form.birth_date}
+              onChangeText={(v) => set('birth_date')(cleanDate(v))}
+              placeholder="Contoh: 1995-05-15"
+              placeholderTextColor={colors.textFaint}
+              keyboardType="numbers-and-punctuation"
+              style={s.input}
+              maxLength={10}
+            />
+          </View>
+          {form.nik.length === 16 && form.birth_date === dobFromNik ? (
+            <Text style={[s.hint, { color: colors.success }]}>
+              ✓ Otomatis dari NIK
+            </Text>
+          ) : null}
+        </View>
+        {/* 3. Alamat */}
+        <View style={s.field}>
+          <Text style={s.label}>Alamat</Text>
+          <View style={[s.inputBox, s.inputBoxMultiline]}>
+            <Ionicons
+              name="location-outline"
+              size={17}
+              color={colors.textFaint}
+              style={{ marginTop: 4 }}
+            />
+            <TextInput
+              value={form.address}
+              onChangeText={set('address')}
+              placeholder="Alamat lengkap"
+              placeholderTextColor={colors.textFaint}
+              style={[s.input, s.inputMultiline]}
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+        </View>
+
+        {/* 4. Email */}
+        <View style={s.field}>
+          <Text style={s.label}>Email</Text>
+          <View style={s.inputBox}>
+            <Ionicons name="mail-outline" size={17} color={colors.textFaint} />
+            <TextInput
+              value={form.email}
+              onChangeText={set('email')}
+              placeholder="nama@email.com"
+              placeholderTextColor={colors.textFaint}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={s.input}
+            />
+          </View>
+        </View>
+
+        {/* 5. No HP */}
+        <View style={s.field}>
+          <Text style={s.label}>No HP (10-13 digit)</Text>
           <View style={s.inputBox}>
             <Ionicons name="call-outline" size={17} color={colors.textFaint} />
             <TextInput
@@ -116,48 +243,6 @@ export default function ProfileCompleteScreen() {
             />
           </View>
           <Text style={s.hint}>{form.phone.replace(/\D/g, '').length}/13</Text>
-        </View>
-
-        {/* Gender */}
-        <View style={s.field}>
-          <Text style={s.label}>Jenis Kelamin</Text>
-          <View style={s.genderRow}>
-            {[
-              { v: 'L', l: 'Laki-laki' },
-              { v: 'P', l: 'Perempuan' },
-            ].map((g) => {
-              const active = form.gender === g.v;
-              return (
-                <Pressable
-                  key={g.v}
-                  onPress={() => set('gender')(g.v)}
-                  style={[s.genderChip, active && s.genderChipActive]}
-                >
-                  <Text style={[s.genderText, active && s.genderTextActive]}>{g.l}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Tanggal Lahir — auto dari NIK */}
-        <View style={s.field}>
-          <Text style={s.label}>Tanggal Lahir (otomatis dari NIK)</Text>
-          <View style={[s.inputBox, { opacity: 0.85 }]}>
-            <Ionicons name="calendar-outline" size={17} color={colors.textFaint} />
-            <TextInput
-              value={form.birth_date}
-              placeholder="Akan terisi otomatis setelah NIK 16 digit"
-              placeholderTextColor={colors.textFaint}
-              style={s.input}
-              editable={false}
-            />
-          </View>
-          {form.birth_date ? (
-            <Text style={[s.hint, { color: colors.success }]}>
-              ✓ {form.birth_date} (dari NIK)
-            </Text>
-          ) : null}
         </View>
 
         <PrimaryButton
@@ -180,8 +265,8 @@ const makeStyles = (c, t) => ({
   content: { padding: spacing.lg, paddingBottom: spacing.xxl * 2, gap: spacing.md },
   title: { ...t.display, fontSize: 26, marginTop: spacing.xxl },
   subtitle: { ...t.body, marginBottom: spacing.sm },
-  field: { gap: 6 },
-  label: { ...t.small, fontSize: 12, color: c.textMuted, fontWeight: '700' },
+  field: { gap: 6, marginTop: spacing.lg },
+  label: { ...t.small, fontSize: 12, color: c.textMuted, fontWeight: '700', marginBottom: 6 },
   hint: { ...t.small, fontSize: 10, textAlign: 'right' },
   inputBox: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
@@ -189,16 +274,12 @@ const makeStyles = (c, t) => ({
     backgroundColor: c.surface, borderRadius: radius.md,
     borderWidth: 1, borderColor: c.line,
   },
-  input: { flex: 1, color: c.text, fontSize: 14, padding: 0 },
-  genderRow: { flexDirection: 'row', gap: spacing.sm },
-  genderChip: {
-    flex: 1, paddingVertical: spacing.md, alignItems: 'center',
-    borderRadius: radius.md, borderWidth: 1, borderColor: c.line,
-    backgroundColor: c.surface,
+  inputBoxMultiline: {
+    height: undefined, minHeight: 70,
+    alignItems: 'flex-start', paddingVertical: 10,
   },
-  genderChipActive: { backgroundColor: c.primary, borderColor: c.primary },
-  genderText: { color: c.textMuted, fontSize: 14, fontWeight: '700' },
-  genderTextActive: { color: c.onPrimary },
+  input: { flex: 1, color: c.text, fontSize: 14, padding: 0 },
+  inputMultiline: { minHeight: 50, textAlignVertical: 'top' },
   logoutLink: { alignSelf: 'center', paddingVertical: spacing.lg },
   logoutText: { color: c.danger, fontSize: 13, fontWeight: '700' },
 });

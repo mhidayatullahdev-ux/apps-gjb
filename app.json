@@ -2,7 +2,7 @@
   "expo": {
     "name": "Gelanggang Jakbar",
     "slug": "dispora-mobile",
-    "version": "1.2.2",
+    "version": "1.3.0",
     "orientation": "portrait",
     "scheme": "disporamobile",
     "userInterfaceStyle": "automatic",
@@ -42,7 +42,7 @@
     },
     "android": {
       "package": "id.go.jakarta.dispora.demo",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"

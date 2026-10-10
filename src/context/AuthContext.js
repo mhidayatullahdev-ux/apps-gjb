@@ -9,6 +9,7 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [bookingQuota, setBookingQuota] = useState(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -32,6 +33,7 @@ export function AuthProvider({ children }) {
     const res = await authApi.register(payload);
     await setToken(res.token);
     setUser(res.user);
+    if (res.booking_quota) setBookingQuota(res.booking_quota);
     return res;
   }, []);
 
@@ -39,6 +41,7 @@ export function AuthProvider({ children }) {
     const res = await authApi.login(payload);
     await setToken(res.token);
     setUser(res.user);
+    if (res.booking_quota) setBookingQuota(res.booking_quota);
   
     try {
       const pushToken = await registerForPushNotifications(); // safe-call
@@ -55,18 +58,21 @@ export function AuthProvider({ children }) {
     const res = await authApi.google(payload);
     await setToken(res.token);
     setUser(res.user);
+    if (res.booking_quota) setBookingQuota(res.booking_quota);
     return res;
   }, []);
 
   const completeProfile = useCallback(async (payload) => {
     const res = await authApi.completeProfile(payload);
     setUser(res.user);
+    if (res.booking_quota) setBookingQuota(res.booking_quota);
     return res;
   }, []);
 
   const refreshProfile = useCallback(async () => {
     const res = await authApi.profile();
     setUser(res.user);
+    if (res.booking_quota) setBookingQuota(res.booking_quota);
     return res.user;
   }, []);
 
@@ -77,10 +83,12 @@ export function AuthProvider({ children }) {
     try { await authApi.logout(); } catch {}
     await setToken(null);
     setUser(null);
+    setBookingQuota(null);
   }, []);
 
   const value = useMemo(() => ({
     user,
+    bookingQuota,
     ready,
     isLoggedIn: !!user,
     isProfileComplete: !!user?.is_profile_complete,
@@ -90,7 +98,7 @@ export function AuthProvider({ children }) {
     completeProfile,
     refreshProfile,
     logout,
-  }), [user, ready, register, login, googleLogin, completeProfile, refreshProfile, logout]);
+  }), [user, bookingQuota, ready, register, login, googleLogin, completeProfile, refreshProfile, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
