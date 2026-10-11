@@ -90,7 +90,7 @@ function MainStack() {
       <Stack.Screen name="Chat" component={ChatScreen} options={{ title: t('chat.title') }} />
       <Stack.Screen name="Helpdesk" component={HelpdeskScreen} options={{ title: t('helpdesk.title') }} />
       <Stack.Screen name="Payment" component={PaymentScreen} options={{ title: lang === 'en' ? 'Confirmation' : 'Konfirmasi' }} />
-      <Stack.Screen name="Transactions" component={TransactionsScreen} options={{ title: lang === 'en' ? 'My Transactions' : 'Transaksi Saya' }} />
+      <Stack.Screen name="Transactions" component={TransactionsScreen} options={{ title: lang === 'en' ? 'Order History' : 'Riwayat Pemesanan' }} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: lang === 'en' ? 'Edit Profile' : 'Edit Profil' }} />
       <Stack.Screen name="Reschedule" component={RescheduleScreen} options={{ title: lang === 'en' ? 'Reschedule' : 'Ubah Jadwal' }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: lang === 'en' ? 'Notifications' : 'Notifikasi' }} />

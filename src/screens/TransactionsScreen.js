@@ -218,7 +218,7 @@ export default function TransactionsScreen({ navigation }) {
 
   const header = (
     <View style={s.headerWrap}>
-      <Text style={s.title}>Transaksi Saya</Text>
+      <Text style={s.title}>Riwayat Pemesanan</Text>
       <View style={s.tabRow}>
         {[
           { id: 'history', label: 'Riwayat' },
