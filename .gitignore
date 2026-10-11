@@ -18,3 +18,8 @@ android/
 *.bak
 *.bak-*
 
+
+# Env files
+.env
+.env.local
+.env.*.local
