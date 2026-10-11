@@ -2,7 +2,6 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 import { getToken, BASE_URL } from './client';
 
-// ==== Konfigurasi Reverb (sesuai .env Laravel) ====
 const REVERB_KEY = 'def1feacda7b811715aa895e56d742aa';
 const REVERB_HOST = 'service-gor.84.247.188.148.sslip.io';
 const REVERB_PORT = 443;

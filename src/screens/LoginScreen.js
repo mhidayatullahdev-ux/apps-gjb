@@ -1,4 +1,3 @@
-// src/screens/LoginScreen.js
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, TextInput, ScrollView, Pressable,

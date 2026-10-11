@@ -1,4 +1,3 @@
-// src/screens/ChatScreen.js
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, FlatList,

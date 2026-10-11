@@ -6,7 +6,7 @@ const analytics = {
     if (__DEV__) {
       console.log(`[Analytics] ${name}`, params);
     }
-    // ✅ Kirim sebagai breadcrumb ke Sentry (untuk context crash)
+    // Kirim sebagai breadcrumb ke Sentry (untuk context crash)
     try {
       Sentry.addBreadcrumb({
         category: 'analytics',

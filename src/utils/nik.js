@@ -1,14 +1,3 @@
-// src/utils/nik.js
-
-/**
- * Extract tanggal lahir dari NIK 16 digit.
- * Format NIK: PPKKCC-DDMMYY-NNNN
- *   - Digit 1-6   : kode wilayah
- *   - Digit 7-8   : tanggal lahir (perempuan +40)
- *   - Digit 9-10  : bulan lahir
- *   - Digit 11-12 : tahun lahir (2 digit)
- *   - Digit 13-16 : nomor urut
- */
 export function extractBirthDateFromNik(nik) {
   if (!nik) return null;
   const clean = String(nik).replace(/\D/g, '');

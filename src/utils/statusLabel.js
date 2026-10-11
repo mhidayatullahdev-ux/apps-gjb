@@ -1,9 +1,3 @@
-// src/utils/statusLabel.js
-
-/**
- * Mapping status booking ke label lokal.
- * Dipakai untuk avoid backend kirim status_label English.
- */
 export function getBookingStatusLabel(status, isEn = false) {
   const map = {
     pending: isEn ? 'Pending Verification' : 'Menunggu Verifikasi',

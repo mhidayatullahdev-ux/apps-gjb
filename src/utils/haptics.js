@@ -1,5 +1,3 @@
-// src/utils/haptics.js
-// Lazy load expo-haptics — kalau native module belum ada, semua jadi no-op.
 let Haptics = null;
 try {
   Haptics = require('expo-haptics');

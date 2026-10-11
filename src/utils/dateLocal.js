@@ -1,13 +1,3 @@
-// src/utils/dateLocal.js
-
-/**
- * Format Date ke YYYY-MM-DD dalam LOCAL timezone.
- * BEDA dengan toISOString().slice(0,10) yang pakai UTC.
- *
- * Kalau user Jakarta (GMT+7) buka jam 02:00 tanggal 11,
- * toISOString() akan return tanggal 10 (salah).
- * Fungsi ini return tanggal 11 (benar).
- */
 export function formatDateLocal(date) {
   if (!date) return null;
   const d = date instanceof Date ? date : new Date(date);

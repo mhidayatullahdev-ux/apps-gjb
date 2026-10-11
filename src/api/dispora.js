@@ -1,12 +1,6 @@
-// Bridge — menyediakan API lama (fetchHomeContent, sendChatMessage, dll)
-// tapi diarahkan ke backend Laravel baru.
-// Screens lama tetap jalan tanpa perlu diubah satu-satu.
-
 import api from './client';
 
 export const BASE_URL = 'https://service-gor.84.247.188.148.sslip.io';
-
-// ---------- Helper umum ----------
 
 export function cleanText(value) {
   if (!value) return '';

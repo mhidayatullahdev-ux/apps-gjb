@@ -1,4 +1,3 @@
-// src/polyfills.js
 if (typeof Promise.allSettled !== 'function') {
   Promise.allSettled = function (promises) {
     return Promise.all(

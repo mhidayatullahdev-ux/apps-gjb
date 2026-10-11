@@ -2,9 +2,6 @@
 import { Linking, Alert, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
-/**
- * Buka Settings HP (langsung ke halaman aplikasi ini).
- */
 export async function openAppSettings() {
   try {
     await Linking.openSettings();

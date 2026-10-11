@@ -11,19 +11,17 @@ export const bookingsApi = {
     headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
   }),
 
-  // ✅ Batch: booking beberapa slot sekaligus (satu checkout, satu pembayaran)
+  // Batch: booking beberapa slot sekaligus (satu checkout, satu pembayaran)
   storeBatch: (payload, idempotencyKey) =>
     api.post('/api/bookings/batch', payload, {
       headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
     }),
 
-  // ✅ Batch multipart (kalau kirim KTP)
   storeBatchMultipart: (formData, idempotencyKey) =>
     api.post('/api/bookings/batch', formData, {
       headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
     }),
 
-  // ✅ Detail grup booking
   showGroup: (groupCode) => api.get(`/api/bookings/group/${groupCode}`),
 
   uploadPayment: (id, formData) => api.post(`/api/bookings/${id}/payment`, formData),

@@ -1,12 +1,8 @@
-// src/api/client.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const BASE_URL = 'https://service-gor.84.247.188.148.sslip.io';
 const TOKEN_KEY = 'dispora.token';
 
-// ============ Multi-language support ============
-// Cek beberapa kandidat key (i18n bisa pakai salah satunya).
-// Di-cache 3 detik biar tidak query AsyncStorage setiap request.
 const LANG_KEYS = [
   'dispora.lang',
   'dispora.language',
@@ -38,7 +34,6 @@ async function detectLang() {
   return 'id';
 }
 
-// Dipanggil dari i18n saat bahasa berubah (opsional tapi recommended)
 export function setApiLanguage(lang) {
   _cachedLang = lang === 'en' ? 'en' : 'id';
   _lastCheck = Date.now();

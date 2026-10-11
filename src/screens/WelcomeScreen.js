@@ -1,4 +1,3 @@
-// src/screens/WelcomeScreen.js
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

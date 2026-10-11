@@ -1,4 +1,3 @@
-// src/screens/BookingFormScreen.js
 import React, { useState, useRef } from 'react';
 import {
   View, Text, ScrollView, Pressable, Alert, KeyboardAvoidingView,
