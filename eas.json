@@ -49,6 +49,15 @@
       "ios": {},
       "channel": "production",
       "environment": "production"
+    },
+    "production-apk": {
+      "distribution": "internal",
+      "environment": "production",
+      "android": {
+        "buildType": "apk",
+        "image": "ubuntu-22.04-jdk-17-ndk-r21e"
+      },
+      "channel": "production"
     }
   },
   "submit": {
