@@ -3,7 +3,8 @@ import Pusher from 'pusher-js';
 import { getToken, BASE_URL } from './client';
 
 const REVERB_KEY = 'def1feacda7b811715aa895e56d742aa';
-const REVERB_HOST = 'service-gor.84.247.188.148.sslip.io';
+const REVERB_HOST =
+  process.env.EXPO_PUBLIC_REVERB_HOST || 'service-gor.84.247.188.148.sslip.io';
 const REVERB_PORT = 443;
 
 // React Native butuh global.Pusher

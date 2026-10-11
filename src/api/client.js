@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// export const BASE_URL = 'https://service-gor.84.247.188.148.sslip.io';
-export const BASE_URL = 'https://gjb.kalanamp.id';
+export const BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || 'https://service-gor.84.247.188.148.sslip.io';
 const TOKEN_KEY = 'dispora.token';
 
 const LANG_KEYS = [
