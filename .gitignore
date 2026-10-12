@@ -23,3 +23,5 @@ android/
 .env
 .env.local
 .env.*.local
+debug.keystore
+*.keystore

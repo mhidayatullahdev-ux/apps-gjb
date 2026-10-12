@@ -2,15 +2,6 @@ name: Build Android APK (Production)
 
 on:
   workflow_dispatch:
-    inputs:
-      build_profile:
-        description: 'Build profile'
-        required: true
-        default: 'production-apk'
-        type: choice
-        options:
-          - production-apk
-          - preview
 
 jobs:
   build-android:
@@ -47,17 +38,13 @@ jobs:
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/21.4.7075529" >> $GITHUB_ENV
           echo "ANDROID_NDK=$ANDROID_HOME/ndk/21.4.7075529" >> $GITHUB_ENV
 
-      - name: Setup debug keystore
+      - name: Decode debug keystore from secrets
         run: |
           mkdir -p ~/.android
-          if [ ! -f ~/.android/debug.keystore ]; then
-            keytool -genkey -v \
-              -keystore ~/.android/debug.keystore \
-              -storepass android -alias androiddebugkey \
-              -keypass android -keyalg RSA -keysize 2048 \
-              -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US"
-          fi
+          echo "${{ secrets.ANDROID_DEBUG_KEYSTORE }}" | base64 --decode > ~/.android/debug.keystore
+          chmod 600 ~/.android/debug.keystore
+          echo "✅ Keystore decoded:"
+          keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android | grep SHA1
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
@@ -83,6 +70,12 @@ jobs:
           NODE_ENV: production
           EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
           EXPO_PUBLIC_REVERB_HOST: ${{ secrets.EXPO_PUBLIC_REVERB_HOST }}
+
+      - name: Verify APK SHA-1
+        run: |
+          APK=$(find android/app/build/outputs/apk -name "*.apk" | head -1)
+          echo "=== APK SHA-1 fingerprint ==="
+          keytool -printcert -jarfile "$APK" | grep SHA1 || true
 
       - name: Locate APK
         id: apk
