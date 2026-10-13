@@ -24,7 +24,7 @@ export default function QuickWidget({ navigation }) {
     { id: 'helpdesk', lib: 'mci', icon: 'face-agent', label: t('widget.helpdesk'), route: 'Helpdesk', accent: 'primary' },
     { id: 'news', lib: 'ion', icon: 'newspaper', label: t('widget.news'), route: 'Berita', accent: 'gold' },
     { id: 'profile', lib: 'ion', icon: 'person', label: t('widget.profile'), route: 'EditProfile', accent: 'primary' },
-    { id: 'more', lib: 'ion', icon: 'grid', label: t('widget.more'), route: 'Lainnya', accent: 'gold' },
+    { id: 'retribution', lib: 'ion', icon: 'cash', label: 'Tarif Retribusi', route: 'Retribution', accent: 'gold' },
   ];
 
   const handlePress = (item) => {

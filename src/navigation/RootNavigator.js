@@ -30,6 +30,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 import ProfileCompleteScreen from '../screens/ProfileCompleteScreen';
 import BookingFormScreen from '../screens/BookingFormScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import RetributionScreen from '../screens/RetributionScreen';
 import RescheduleScreen from '../screens/RescheduleScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
@@ -92,6 +93,7 @@ function MainStack() {
       <Stack.Screen name="Payment" component={PaymentScreen} options={{ title: lang === 'en' ? 'Confirmation' : 'Konfirmasi' }} />
       <Stack.Screen name="Transactions" component={TransactionsScreen} options={{ title: lang === 'en' ? 'Order History' : 'Riwayat Pemesanan' }} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: lang === 'en' ? 'Edit Profile' : 'Edit Profil' }} />
+      <Stack.Screen name="Retribution" component={RetributionScreen} options={{ title: lang === 'en' ? 'Retribution Rates' : 'Tarif Retribusi' }} />
       <Stack.Screen name="Reschedule" component={RescheduleScreen} options={{ title: lang === 'en' ? 'Reschedule' : 'Ubah Jadwal' }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: lang === 'en' ? 'Notifications' : 'Notifikasi' }} />
       <Stack.Screen name="Favorites" component={FavoritesScreen} options={{ title: lang === 'en' ? 'Favorites' : 'Favorit' }} />

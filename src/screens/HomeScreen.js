@@ -276,6 +276,8 @@ export default function HomeScreen({ navigation }) {
       {/* Menu Cepat */}
       <QuickWidget navigation={navigation} />
 
+
+
       {/* Kutipan */}
       {false ? (
         <>
