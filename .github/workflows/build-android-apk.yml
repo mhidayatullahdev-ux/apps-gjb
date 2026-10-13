@@ -38,14 +38,6 @@ jobs:
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/21.4.7075529" >> $GITHUB_ENV
           echo "ANDROID_NDK=$ANDROID_HOME/ndk/21.4.7075529" >> $GITHUB_ENV
 
-      - name: Decode debug keystore from secrets
-        run: |
-          mkdir -p ~/.android
-          echo "${{ secrets.ANDROID_DEBUG_KEYSTORE }}" | base64 --decode > ~/.android/debug.keystore
-          chmod 600 ~/.android/debug.keystore
-          echo "✅ Keystore decoded:"
-          keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android | grep SHA1
-
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
@@ -55,10 +47,40 @@ jobs:
           EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
           EXPO_PUBLIC_REVERB_HOST: ${{ secrets.EXPO_PUBLIC_REVERB_HOST }}
 
-      - name: Patch signing config to debug (test only)
+      - name: Overwrite debug.keystore with stable keystore
+        run: |
+          echo "${{ secrets.ANDROID_DEBUG_KEYSTORE }}" | base64 --decode > android/app/debug.keystore
+          chmod 600 android/app/debug.keystore
+          echo "✅ Keystore SHA-1:"
+          keytool -list -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android | grep SHA1
+
+      - name: Patch signing config to use debug for release
         run: |
           cd android/app
-          sed -i 's/signingConfig signingConfigs.release/signingConfig signingConfigs.debug/' build.gradle
+          python3 << 'PYEOF'
+          import re
+          with open('build.gradle') as f:
+              content = f.read()
+
+          # Ganti semua signingConfig debug di release block → tetap debug (kalau belum)
+          # Cari release block dan pastikan pakai debug
+          pattern = re.compile(
+              r"(release\s*\{[^}]*signingConfig\s+signingConfigs\.)\w+",
+              re.DOTALL
+          )
+          m = pattern.search(content)
+          if m and m.group(0):
+              print(f"Before: ...{m.group(0)[-60:]}")
+              content = pattern.sub(r"\1debug", content)
+              with open('build.gradle', 'w') as f:
+                  f.write(content)
+              print("✅ Patched release → signingConfigs.debug")
+          else:
+              print("⚠️ Release signingConfig pattern tidak ketemu")
+          PYEOF
+
+          echo ""
+          echo "=== build.gradle signingConfig ==="
           grep -n "signingConfig signingConfigs" build.gradle || true
 
       - name: Build APK
