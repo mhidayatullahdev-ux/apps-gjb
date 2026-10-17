@@ -28,7 +28,7 @@
       [
         "@react-native-google-signin/google-signin",
         {
-          "iosUrlScheme": "com.googleusercontent.apps.425017210315-5v634vcgkn78r7j0mtph458lhg60vb0c"
+          "iosUrlScheme": "com.googleusercontent.apps.425017210315-lti75pv26s2jv2vm9c243geh3ako4884"
         }
       ],
       "expo-localization"
@@ -37,7 +37,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "id.go.jakarta.dispora.demo",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "Aplikasi memerlukan akses galeri untuk mengunggah foto KTP/avatar.",
+        "NSCameraUsageDescription": "Aplikasi memerlukan akses kamera untuk mengambil foto."
       }
     },
     "android": {
@@ -65,7 +67,6 @@
       "bundler": "metro",
       "favicon": "./assets/favicon.png"
     },
-    "newArchEnabled": false,
     "extra": {
       "eas": {
         "projectId": "02ddc74d-75d2-4875-ab1f-468f02714916"
