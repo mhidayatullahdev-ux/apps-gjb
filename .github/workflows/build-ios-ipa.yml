@@ -1,0 +1,82 @@
+name: Build iOS IPA (Unsigned)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build iOS IPA
+    runs-on: macos-14
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Prebuild iOS
+        run: npx expo prebuild --platform ios --clean
+        env:
+          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
+          EXPO_PUBLIC_REVERB_HOST: ${{ secrets.EXPO_PUBLIC_REVERB_HOST }}
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install --repo-update
+
+      - name: Find workspace and scheme
+        id: find-ws
+        run: |
+          cd ios
+          WS=$(ls -d *.xcworkspace | head -1)
+          SCHEME=$(basename "$WS" .xcworkspace)
+          echo "workspace=$WS" >> $GITHUB_OUTPUT
+          echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
+          echo "✅ Workspace: $WS | Scheme: $SCHEME"
+
+      - name: Build iOS (unsigned)
+        run: |
+          cd ios
+          xcodebuild \
+            -workspace "${{ steps.find-ws.outputs.workspace }}" \
+            -scheme "${{ steps.find-ws.outputs.scheme }}" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+        env:
+          NODE_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
+          EXPO_PUBLIC_REVERB_HOST: ${{ secrets.EXPO_PUBLIC_REVERB_HOST }}
+
+      - name: Package IPA
+        run: |
+          cd ios
+          APP_PATH=$(find build/Build/Products/Release-iphoneos -name "*.app" -maxdepth 1 | head -1)
+          APP_NAME=$(basename "$APP_PATH")
+          echo "✅ Found app: $APP_PATH"
+          
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -r app-unsigned.ipa Payload/
+          
+          ls -lh app-unsigned.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-ios-unsigned
+          path: ios/app-unsigned.ipa
+          retention-days: 30
