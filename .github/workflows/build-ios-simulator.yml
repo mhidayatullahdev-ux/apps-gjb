@@ -40,31 +40,32 @@ jobs:
           echo "workspace=$WS" >> $GITHUB_OUTPUT
           echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
 
-      - name: Build for Simulator
+      - name: Build for Simulator (Release)
         run: |
           cd ios
           xcodebuild \
             -workspace "${{ steps.find-ws.outputs.workspace }}" \
             -scheme "${{ steps.find-ws.outputs.scheme }}" \
-            -configuration Debug \
+            -configuration Release \
             -sdk iphonesimulator \
             -derivedDataPath build \
             -destination 'generic/platform=iOS Simulator' \
             build
         env:
-          NODE_ENV: development
+          NODE_ENV: production
           EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
           EXPO_PUBLIC_REVERB_HOST: ${{ secrets.EXPO_PUBLIC_REVERB_HOST }}
 
       - name: Package App
         run: |
           cd ios
-          APP_PATH=$(find build/Build/Products/Debug-iphonesimulator -name "*.app" -maxdepth 1 | head -1)
+          # Path diubah ke Release-iphonesimulator
+          APP_PATH=$(find build/Build/Products/Release-iphonesimulator -name "*.app" -maxdepth 1 | head -1)
           APP_NAME=$(basename "$APP_PATH")
           echo "✅ Found app: $APP_NAME"
           
-          # Masuk ke folder tempat .app berada agar strukturnya di-root zip
-          cd build/Build/Products/Debug-iphonesimulator/
+          # Masuk ke folder tempat .app berada
+          cd build/Build/Products/Release-iphonesimulator/
           
           # Zip file .app langsung di dalam root
           zip -r ../../../../app-simulator.zip "$APP_NAME"
