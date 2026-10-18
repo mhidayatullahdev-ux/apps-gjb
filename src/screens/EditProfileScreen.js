@@ -427,11 +427,11 @@ const makeStyles = (c, t) => ({
   },
   sectionTitle: { ...t.subtitle, fontSize: 15, fontWeight: '900' },
 
-  field: { gap: 6, marginTop: spacing.lg },
+  field: { gap: 6, marginTop: spacing.lg, marginBottom: spacing.md },
   label: { ...t.small, fontSize: 12, color: c.textMuted, fontWeight: '700', marginBottom: 6 },
   hint: { ...t.small, fontSize: 10, textAlign: 'right', marginTop: 2 },
   inputBoxMultiline: {
-    minHeight: 80, alignItems: 'flex-start', paddingVertical: 12,
+    height: 'auto', minHeight: 85, alignItems: 'flex-start', paddingVertical: 12,
   },
   inputMultiline: {
     minHeight: 50, textAlignVertical: 'top',
