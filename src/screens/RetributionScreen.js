@@ -1,5 +1,6 @@
 // src/screens/RetributionScreen.js
-import React from 'react';
+import React, { useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -31,6 +32,13 @@ export default function RetributionScreen() {
   const { lang } = useI18n();
   const settings = useSettings();
   const s = useThemedStyles(makeStyles);
+
+  // ✅ Auto-refresh tarif retribusi setiap kali layar dibuka
+  useFocusEffect(
+    useCallback(() => {
+      if (settings.reload) settings.reload();
+    }, [settings.reload])
+  );
 
   const isEn = lang === 'en';
   const content = settings?.retribution?.content;

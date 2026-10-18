@@ -16,6 +16,7 @@ export const authApi = {
   forgotPassword: (data) => api.post('/api/forgot-password', data, { auth: false }),
   resetPassword: (data) => api.post('/api/reset-password', data, { auth: false }),
 
+  savePushToken: (token) => api.post('/api/profile/push-token', { expo_push_token: token }),
   logout: () => api.post('/api/logout'),
 };
 

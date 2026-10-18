@@ -5,6 +5,8 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { notificationsApi } from '../api/notifications';
 import { initEcho } from '../api/echo';
+import Toast from 'react-native-toast-message';
+import * as Notifications from 'expo-notifications';
 import { useAuth } from './AuthContext';
 
 const NotificationsContext = createContext(null);
@@ -72,10 +74,41 @@ export function NotificationsProvider({ children }) {
     (async () => {
       const echo = await initEcho();
       if (!echo || !isActive) return;
+      
+      // Listener Notifikasi Sistem (Booking, Pembayaran, dll)
+      const notifChannel = echo.private(`App.Models.User.${user.id}`);
+      notifChannel.notification((notification) => {
+        if (!isActive) return;
+        Notifications.scheduleNotificationAsync({
+          content: {
+            title: notification.title || 'Notifikasi Baru',
+            body: notification.message || 'Ada pembaruan dari sistem.',
+            data: notification.data || {},
+            sound: true,
+          },
+          trigger: null,
+        }).catch(() => {});
+        load(); // Refresh daftar notifikasi
+      });
+
       channel = echo.private(`chat.${user.id}`);
       channel.listen('.new-message', (data) => {
         if (!isActive) return;
-        if (data.sender_type === 'admin') load();
+        if (data.sender_type === 'admin') {
+          // ✅ Munculkan Notifikasi Asli HP (Heads-up)
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: 'Pesan Baru dari Admin',
+              body: data.message,
+              data: { type: 'chat_reply' },
+              sound: true,
+            },
+            trigger: null, // null = langsung muncul saat itu juga
+          }).catch(() => {});
+          
+          // Tetap panggil load untuk update badge di tab bawah
+          load();
+        }
       });
     })();
 
@@ -83,6 +116,7 @@ export function NotificationsProvider({ children }) {
       isActive = false;
       if (channel) {
         try { channel.stopListening('.new-message'); } catch {}
+        try { echo.leave(`App.Models.User.${user.id}`); } catch {}
       }
     };
   }, [isLoggedIn, user?.id, load]);

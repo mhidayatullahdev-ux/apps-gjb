@@ -11,6 +11,9 @@ import { useI18n } from '../i18n/i18n';
 import { useAuth } from '../context/AuthContext';
 import { useNetwork } from '../context/NetworkContext';
 import { chatApi, subscribeChat } from '../api/chat';
+import Toast from 'react-native-toast-message';
+import * as Notifications from 'expo-notifications';
+import haptic from '../utils/haptics';
 
 let idSeq = 0;
 const nextLocalId = () => `local_${Date.now()}_${idSeq++}`;
@@ -116,7 +119,13 @@ export default function ChatScreen({ route }) {
         if (data.id > lastServerIdRef.current) {
           lastServerIdRef.current = data.id;
         }
-        if (mapped.role === 'admin') setAdminTyping(false);
+        if (mapped.role === 'admin') {
+          setAdminTyping(false);
+          haptic.light(); // Efek getar
+          
+          // Opsional: Kalau user sedang di layar lain (bukan chat), munculkan notif HP
+          // Tapi karena di sini kita sudah di dalam ChatScreen, cukup getar saja.
+        }
         scrollToEnd();
       });
 

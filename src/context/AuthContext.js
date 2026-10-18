@@ -1,3 +1,4 @@
+import Toast from 'react-native-toast-message';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { authApi } from '../api/auth';
@@ -47,7 +48,7 @@ export function AuthProvider({ children }) {
       const pushToken = await registerForPushNotifications(); // safe-call
       if (pushToken) {
         // Optional: kirim ke backend untuk simpan
-        // await authApi.savePushToken(pushToken);
+        await authApi.savePushToken(pushToken);
       }
     } catch {}
   
@@ -91,6 +92,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     setUnauthorizedHandler(() => {
       console.log('[Auth] Token expired / 401 detected. Logging out...');
+      Toast.show({
+        type: 'error',
+        text1: 'Sesi Berakhir',
+        text2: 'Sesi login telah berakhir, silakan login kembali.',
+        visibilityTime: 4000,
+      });
       logout();
     });
   }, [logout]);

@@ -38,10 +38,7 @@ export function useGoogleAuth({ onSuccess, onError } = {}) {
     setError('');
 
     if (!isGoogleConfigured()) {
-      Alert.alert(
-        'Google Sign-In belum dikonfigurasi',
-        'Isi GOOGLE_*_CLIENT_ID di src/config/google.js terlebih dahulu.'
-      );
+      setError('Google Sign-In belum dikonfigurasi.');
       return;
     }
 
@@ -57,6 +54,11 @@ export function useGoogleAuth({ onSuccess, onError } = {}) {
       });
 
       const userInfo = await GoogleSignin.signIn();
+      
+      if (!userInfo || userInfo.type === 'cancelled' || userInfo.cancelled) {
+        throw new Error('Login Google dibatalkan.');
+      }
+
       const tokens = await GoogleSignin.getTokens();
       const idToken = tokens.idToken;
 
@@ -68,20 +70,11 @@ export function useGoogleAuth({ onSuccess, onError } = {}) {
       onSuccess?.(result);
     } catch (e) {
       console.error('[GoogleAuth] Error:', e);
-
       let msg = 'Login Google gagal.';
-      if (e.code === statusCodes.SIGN_IN_CANCELLED) {
+      if (e.code === statusCodes.SIGN_IN_CANCELLED || e.message === 'Login Google dibatalkan.') {
         msg = 'Login Google dibatalkan.';
-      } else if (e.code === statusCodes.IN_PROGRESS) {
-        msg = 'Login Google sedang berjalan.';
-      } else if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        msg = 'Google Play Services tidak tersedia di HP ini.';
-      } else if (e.message) {
-        msg = e.message;
       }
-
       setError(msg);
-      onError?.(msg);
     } finally {
       setLoading(false);
     }
