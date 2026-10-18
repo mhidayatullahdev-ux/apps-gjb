@@ -192,9 +192,11 @@ export default function FacilityDetailScreen({ route, navigation }) {
       const exists = list.find((sl) => sl.start_time === slot.start_time);
       let next;
       if (exists) {
-        next = list.filter((sl) => sl.start_time !== slot.start_time);
+        // Kalau klik slot yang sama, batal pilih
+        next = [];
       } else {
-        next = [...list, { start_time: slot.start_time, end_time: slot.end_time, price: Number(slot.price || 0) }];
+        // Hanya boleh 1 slot: replace list dengan slot baru
+        next = [{ start_time: slot.start_time, end_time: slot.end_time, price: Number(slot.price || 0) }];
       }
       return { ...prev, [courtId]: next };
     });
@@ -529,8 +531,8 @@ export default function FacilityDetailScreen({ route, navigation }) {
           </Text>
           <Text style={[s.hint, { paddingHorizontal: spacing.lg, marginBottom: spacing.sm }]}>
             {isEn
-              ? 'Tap to select. You can pick any slots (consecutive or not).'
-              : 'Tap untuk pilih. Bisa pilih slot apa saja (berurutan atau tidak).'}
+              ? 'Tap to select 1 slot.'
+              : 'Tap untuk pilih 1 slot.'}
           </Text>
 
           {availabilityLoading ? (
