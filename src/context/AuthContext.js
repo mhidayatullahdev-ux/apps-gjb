@@ -91,14 +91,26 @@ export function AuthProvider({ children }) {
   // ✅ Handle Token Expired (401) dari API
   useEffect(() => {
     setUnauthorizedHandler(() => {
-      console.log('[Auth] Token expired / 401 detected. Logging out...');
-      Toast.show({
-        type: 'error',
-        text1: 'Sesi Berakhir',
-        text2: 'Sesi login telah berakhir, silakan login kembali.',
-        visibilityTime: 4000,
+      // Cegah infinite loop: Hanya jalankan jika user masih ada (belum logout)
+      setUser((currentUser) => {
+        if (currentUser) {
+          console.log('[Auth] Token expired / 401 detected. Logging out...');
+          Toast.show({
+            type: 'error',
+            text1: 'Sesi Berakhir',
+            text2: 'Sesi login telah berakhir, silakan login kembali.',
+            visibilityTime: 4000,
+          });
+          
+          // Clear token secara lokal TANPA memanggil API logout (biar gak 401 lagi)
+          setToken(null).then(() => {
+            setUser(null);
+            setBookingQuota(null);
+            try { disconnectEcho(); } catch {}
+          });
+        }
+        return null;
       });
-      logout();
     });
   }, [logout]);
 

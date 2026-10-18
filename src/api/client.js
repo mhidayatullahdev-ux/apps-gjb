@@ -150,7 +150,8 @@ export async function request(path, opts = {}) {
     try { data = text ? JSON.parse(text) : null; } catch { data = text; }
 
     if (res.status === 401) {
-      if (onUnauthorized) {
+      // Jangan trigger global logout kalau yang gagal adalah endpoint logout itu sendiri
+      if (onUnauthorized && !path.includes('/logout')) {
         try { onUnauthorized(); } catch {}
       }
       throw new ApiError(

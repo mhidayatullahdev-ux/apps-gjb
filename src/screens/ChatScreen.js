@@ -142,6 +142,36 @@ export default function ChatScreen({ route }) {
     };
   }, [user?.id, scrollToEnd]);
 
+
+  // ✅ Fallback: Polling pesan baru setiap 5 detik (jika WebSocket terputus)
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const interval = setInterval(async () => {
+      try {
+        const res = await chatApi.messages(lastServerIdRef.current);
+        const newMessages = res.messages || [];
+        
+        if (newMessages.length > 0) {
+          const mappedList = newMessages.map(mapServer);
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map(m => m.serverId).filter(Boolean));
+            const uniqueNew = mappedList.filter(m => !existingIds.has(m.serverId));
+            if (uniqueNew.length > 0) {
+              if (lastServerIdRef.current < uniqueNew[uniqueNew.length - 1].serverId) {
+                lastServerIdRef.current = uniqueNew[uniqueNew.length - 1].serverId;
+              }
+              return [...prev, ...uniqueNew];
+            }
+            return prev;
+          });
+        }
+      } catch (e) {}
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [user?.id, mapServer]);
+
   const send = async () => {
     const text = input.trim();
     if (!text || sending) return;
