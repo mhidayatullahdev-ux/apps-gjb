@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { authApi } from '../api/auth';
-import { getToken, setToken } from '../api/client';
+import { getToken, setToken, setUnauthorizedHandler } from '../api/client';
 import { disconnectEcho } from '../api/echo';
 import { registerForPushNotifications } from '../services/notifications';
 
@@ -85,6 +85,15 @@ export function AuthProvider({ children }) {
     setUser(null);
     setBookingQuota(null);
   }, []);
+
+  
+  // ✅ Handle Token Expired (401) dari API
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      console.log('[Auth] Token expired / 401 detected. Logging out...');
+      logout();
+    });
+  }, [logout]);
 
   const value = useMemo(() => ({
     user,
