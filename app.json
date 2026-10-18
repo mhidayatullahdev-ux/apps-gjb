@@ -39,7 +39,14 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Aplikasi memerlukan akses galeri untuk mengunggah foto KTP/avatar.",
-        "NSCameraUsageDescription": "Aplikasi memerlukan akses kamera untuk mengambil foto."
+        "NSCameraUsageDescription": "Aplikasi memerlukan akses kamera untuk mengambil foto.",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.425017210315-lti75pv26s2jv2vm9c243geh3ako4884"
+            ]
+          }
+        ]
       }
     },
     "android": {
