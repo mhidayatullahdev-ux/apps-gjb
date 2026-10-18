@@ -9,23 +9,30 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      - run: npm install --legacy-peer-deps
-      
-      - run: npx expo prebuild --platform ios --clean
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Prebuild iOS
+        run: npx expo prebuild --platform ios --clean
         env:
           EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
           EXPO_PUBLIC_REVERB_HOST: ${{ secrets.EXPO_PUBLIC_REVERB_HOST }}
 
-      - run: |
+      - name: Install CocoaPods
+        run: |
           cd ios
           pod install --repo-update
 
-      - id: find-ws
+      - name: Find workspace and scheme
+        id: find-ws
         run: |
           cd ios
           WS=$(ls -d *.xcworkspace | head -1)
@@ -33,7 +40,8 @@ jobs:
           echo "workspace=$WS" >> $GITHUB_OUTPUT
           echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
 
-      - run: |
+      - name: Build for Simulator
+        run: |
           cd ios
           xcodebuild \
             -workspace "${{ steps.find-ws.outputs.workspace }}" \
@@ -48,12 +56,23 @@ jobs:
           EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
           EXPO_PUBLIC_REVERB_HOST: ${{ secrets.EXPO_PUBLIC_REVERB_HOST }}
 
-      - run: |
+      - name: Package App
+        run: |
           cd ios
           APP_PATH=$(find build/Build/Products/Debug-iphonesimulator -name "*.app" -maxdepth 1 | head -1)
-          zip -r app-simulator.zip "$APP_PATH"
+          APP_NAME=$(basename "$APP_PATH")
+          echo "✅ Found app: $APP_NAME"
+          
+          # Masuk ke folder tempat .app berada agar strukturnya di-root zip
+          cd build/Build/Products/Debug-iphonesimulator/
+          
+          # Zip file .app langsung di dalam root
+          zip -r ../../../../app-simulator.zip "$APP_NAME"
+          ls -lh ../../../../app-simulator.zip
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Simulator App
+        uses: actions/upload-artifact@v4
         with:
           name: app-ios-simulator
           path: ios/app-simulator.zip
+          retention-days: 30
