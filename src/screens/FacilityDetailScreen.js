@@ -49,7 +49,11 @@ export default function FacilityDetailScreen({ route, navigation }) {
   const facilityId = route.params?.facilityId;
   const [facility, setFacility] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(() => getTomorrowLocal());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
   const [courtsAvailability, setCourtsAvailability] = useState([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [suggestions, setSuggestions] = useState([]);

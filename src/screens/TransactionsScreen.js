@@ -90,18 +90,7 @@ export default function TransactionsScreen({ navigation }) {
         const dateA = new Date(a.created_at || a.booking_date || 0).getTime();
         const dateB = new Date(b.created_at || b.booking_date || 0).getTime();
         if (dateB !== dateA) return dateB - dateA;
-      
-
-
-
-  // ✅ Auto-refresh data transaksi saat layar dibuka
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
-
-  return (Number(b.id) || 0) - (Number(a.id) || 0);
+        return (Number(b.id) || 0) - (Number(a.id) || 0);
       });
 
       // DEBUG grouping
@@ -142,6 +131,13 @@ export default function TransactionsScreen({ navigation }) {
   }, [tab, settings?.booking?.history_days, isOnline]);
 
   
+
+  // ✅ Auto-refresh data transaksi saat layar dibuka
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const openDetail = async (item) => {
     if (!isOnline) return;
