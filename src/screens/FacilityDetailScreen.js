@@ -178,7 +178,8 @@ export default function FacilityDetailScreen({ route, navigation }) {
   const nextDays = (count) => {
     const out = [];
     const now = new Date();
-    for (let i = 1; i <= count; i++) {
+    // i = 0 artinya mulai dari HARI INI
+    for (let i = 0; i < count; i++) {
       out.push(new Date(now.getFullYear(), now.getMonth(), now.getDate() + i));
     }
     return out;

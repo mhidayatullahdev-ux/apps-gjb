@@ -1,8 +1,8 @@
 // src/screens/TransactionsScreen.js
 import React, { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, FlatList, RefreshControl, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
 
 import { useTheme, useThemedStyles, spacing, radius } from '../theme';
 import { useSettings } from '../context/SettingsContext';
@@ -91,13 +91,15 @@ export default function TransactionsScreen({ navigation }) {
         const dateB = new Date(b.created_at || b.booking_date || 0).getTime();
         if (dateB !== dateA) return dateB - dateA;
       
-  // ✅ Auto-refresh data transaksi setiap 10 detik
-  useEffect(() => {
-    const interval = setInterval(() => {
+
+
+
+  // ✅ Auto-refresh data transaksi saat layar dibuka
+  useFocusEffect(
+    useCallback(() => {
       load();
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [load]);
+    }, [load])
+  );
 
   return (Number(b.id) || 0) - (Number(a.id) || 0);
       });
