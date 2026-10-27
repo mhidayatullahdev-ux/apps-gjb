@@ -15,7 +15,7 @@ const dict = {
     'menu.transactions': 'Riwayat Pemesanan',
     'menu.transactionsDesc': 'Status pemesanan & pembayaran',
     'menu.helpdesk': 'Helpdesk',
-    'menu.chat': 'Live Chat',
+    'menu.chat': 'Tanya GJB',
     'menu.accountSettings': 'Pengaturan Akun',
 
     // ============ WIDGET MENU CEPAT ============
@@ -23,7 +23,7 @@ const dict = {
     'widget.facilities': 'Fasilitas',
     'widget.booking': 'Booking',
     'widget.transactions': 'Konfirmasi',
-    'widget.chat': 'Chat',
+    'widget.chat': 'Tanya GJB',
     'widget.helpdesk': 'Helpdesk',
     'widget.news': 'Berita',
     'widget.profile': 'Profil',
@@ -165,9 +165,9 @@ const dict = {
     'more.office': 'Dinas Pemuda dan Olahraga Provinsi DKI Jakarta',
 
     // ============ CHAT ============
-    'chat.title': 'Live chat',
+    'chat.title': 'Tanya GJB',
     'chat.placeholder': 'Tulis pesan...',
-    'chat.greeting': 'Halo! Ada yang bisa dibantu seputar layanan Dispora DKI Jakarta?',
+    'chat.greeting': 'Halo! Ada yang bisa dibantu seputar layanan GJB?',
     'chat.error': 'Gagal mengirim pesan. Periksa koneksi lalu coba lagi.',
     'chat.typing': 'Sedang mengetik...',
 
@@ -249,7 +249,7 @@ const dict = {
     'menu.transactions': 'Booking History',
     'menu.transactionsDesc': 'Booking & payment status',
     'menu.helpdesk': 'Helpdesk',
-    'menu.chat': 'Live Chat',
+    'menu.chat': 'Tanya GJB',
     'menu.accountSettings': 'Account Settings',
 
     // ============ WIDGET MENU CEPAT ============
@@ -398,7 +398,7 @@ const dict = {
     'more.office': 'Youth and Sports Agency of DKI Jakarta',
 
     // ============ CHAT ============
-    'chat.title': 'Live chat',
+    'chat.title': 'Tanya GJB',
     'chat.placeholder': 'Type a message...',
     'chat.greeting': 'Hi! How can I help you with Dispora DKI Jakarta services?',
     'chat.error': 'Failed to send. Check your connection and try again.',

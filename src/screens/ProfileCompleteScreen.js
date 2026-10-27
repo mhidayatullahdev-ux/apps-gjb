@@ -211,22 +211,6 @@ export default function ProfileCompleteScreen() {
           </View>
         </View>
 
-        {/* 4. Email */}
-        <View style={s.field}>
-          <Text style={s.label}>Email</Text>
-          <View style={s.inputBox}>
-            <Ionicons name="mail-outline" size={17} color={colors.textFaint} />
-            <TextInput
-              value={form.email}
-              onChangeText={set('email')}
-              placeholder="nama@email.com"
-              placeholderTextColor={colors.textFaint}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={s.input}
-            />
-          </View>
-        </View>
 
         {/* 5. No HP */}
         <View style={s.field}>
@@ -243,6 +227,23 @@ export default function ProfileCompleteScreen() {
             />
           </View>
           <Text style={s.hint}>{form.phone.replace(/\D/g, '').length}/13</Text>
+        </View>
+
+        {/* 4. Email */}
+        <View style={s.field}>
+          <Text style={s.label}>Email</Text>
+          <View style={s.inputBox}>
+            <Ionicons name="mail-outline" size={17} color={colors.textFaint} />
+            <TextInput
+              value={form.email}
+              onChangeText={set('email')}
+              placeholder="nama@email.com"
+              placeholderTextColor={colors.textFaint}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={s.input}
+            />
+          </View>
         </View>
 
         <PrimaryButton

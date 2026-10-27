@@ -208,60 +208,6 @@ export default function EditProfileScreen({ navigation }) {
           </View>
 
           <View style={s.field}>
-            <Text style={s.label}>Email</Text>
-            <View style={s.inputBox}>
-              <Ionicons name="mail-outline" size={17} color={colors.textFaint} />
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="email@example.com"
-                placeholderTextColor={colors.textFaint}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                style={s.input}
-              />
-            </View>
-          </View>
-
-          <View style={s.field}>
-            <Text style={s.label}>Nomor HP</Text>
-            <View style={s.inputBox}>
-              <Ionicons name="call-outline" size={17} color={colors.textFaint} />
-              <TextInput
-                value={phone}
-                onChangeText={(v) => setPhone(cleanPhone(v))}
-                placeholder="081234567890"
-                placeholderTextColor={colors.textFaint}
-                keyboardType="phone-pad"
-                style={s.input}
-              />
-            </View>
-          </View>
-
-
-        {/* Alamat */}
-        <View style={s.field}>
-          <Text style={s.label}>Alamat</Text>
-          <View style={[s.inputBox, s.inputBoxMultiline]}>
-            <Ionicons
-              name="location-outline"
-              size={17}
-              color={colors.textFaint}
-              style={{ marginTop: 4 }}
-            />
-            <TextInput
-              value={address}
-              onChangeText={setAddress}
-              placeholder="Alamat lengkap"
-              placeholderTextColor={colors.textFaint}
-              style={[s.input, s.inputMultiline]}
-              multiline
-              numberOfLines={3}
-            />
-          </View>
-        </View>
-          {/* NIK */}
-          <View style={s.field}>
             <Text style={s.label}>NIK (16 digit)</Text>
             <View style={s.inputBox}>
               <Ionicons name="card-outline" size={17} color={colors.textFaint} />
@@ -278,7 +224,27 @@ export default function EditProfileScreen({ navigation }) {
             <Text style={s.hint}>{nik.length}/16 digit</Text>
           </View>
 
-          {/* Gender */}
+          <View style={s.field}>
+            <Text style={s.label}>Alamat</Text>
+            <View style={[s.inputBox, s.inputBoxMultiline]}>
+              <Ionicons
+                name="location-outline"
+                size={17}
+                color={colors.textFaint}
+                style={{ marginTop: 4 }}
+              />
+              <TextInput
+                value={address}
+                onChangeText={setAddress}
+                placeholder="Alamat lengkap"
+                placeholderTextColor={colors.textFaint}
+                style={[s.input, s.inputMultiline]}
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+          </View>
+
           <View style={s.field}>
             <Text style={s.label}>Jenis Kelamin</Text>
             <View style={s.genderRow}>
@@ -304,6 +270,37 @@ export default function EditProfileScreen({ navigation }) {
                   </Pressable>
                 );
               })}
+            </View>
+          </View>
+
+          <View style={s.field}>
+            <Text style={s.label}>Nomor HP</Text>
+            <View style={s.inputBox}>
+              <Ionicons name="call-outline" size={17} color={colors.textFaint} />
+              <TextInput
+                value={phone}
+                onChangeText={(v) => setPhone(cleanPhone(v))}
+                placeholder="081234567890"
+                placeholderTextColor={colors.textFaint}
+                keyboardType="phone-pad"
+                style={s.input}
+              />
+            </View>
+          </View>
+
+          <View style={s.field}>
+            <Text style={s.label}>Email</Text>
+            <View style={s.inputBox}>
+              <Ionicons name="mail-outline" size={17} color={colors.textFaint} />
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="email@example.com"
+                placeholderTextColor={colors.textFaint}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                style={s.input}
+              />
             </View>
           </View>
 

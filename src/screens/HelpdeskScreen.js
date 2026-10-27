@@ -54,7 +54,7 @@ export default function HelpdeskScreen({ navigation }) {
 
         <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
           <PrimaryButton
-            label="Buka Live Chat"
+            label="Buka chat Tanya GJB"
             icon="chatbubble-ellipses-outline"
             disabled={!isOnline}
             onPress={() => {

@@ -67,6 +67,7 @@ export function SettingsProvider({ children }) {
       contact: s.contact, whatsappUrl,
       social: s.social, payment: s.payment,
       pricing: s.pricing, booking: s.booking, reschedule: s.reschedule,
+      terms: s.terms || { content: null },
       retribution: s.retribution || { content: null },
       sportTypes: o.sport_types || [], purposes: o.purposes || [],
       bookingStatuses: o.booking_statuses || {}, paymentStatuses: o.payment_statuses || {},

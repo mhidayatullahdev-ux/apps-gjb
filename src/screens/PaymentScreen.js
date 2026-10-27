@@ -658,7 +658,7 @@ export default function PaymentScreen({ route, navigation }) {
       <View style={s.actions}>
         <PrimaryButton label="Chat via WhatsApp" icon="logo-whatsapp" onPress={openWhatsApp} />
         <PrimaryButton
-          label={isEn ? 'Open Live Chat' : 'Buka Live Chat'}
+          label={isEn ? 'Chat min GJB' : 'Tanya min GJB'}
           variant="ghost"
           icon="chatbubble-ellipses-outline"
           onPress={openLiveChat}

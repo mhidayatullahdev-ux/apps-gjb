@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { bookingsApi } from '../api/bookings';
 import { PrimaryButton, Notice, Divider } from '../components/common';
+import TermsModal from '../components/TermsModal';
 
 export default function BookingFormScreen({ route, navigation }) {
   const { colors } = useTheme();
@@ -41,11 +42,13 @@ export default function BookingFormScreen({ route, navigation }) {
     : court?.sport_type;
 
   const [ktp, setKtp] = useState(null);
-  const [notes, setNotes] = useState('');
+  
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);  // ✅ Guard double-tap
   const [progress, setProgress] = useState('');
   const [error, setError] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   const dateObj = defaultDate ? new Date(defaultDate) : new Date();
 
@@ -137,6 +140,11 @@ export default function BookingFormScreen({ route, navigation }) {
       return setError(isEn ? 'No slots selected.' : 'Belum ada slot terpilih.');
     }
 
+    if (!agreedToTerms) {
+      submittingRef.current = false;
+      return setError(isEn ? 'You must agree to the Terms & Conditions.' : 'Anda harus menyetujui Syarat & Ketentuan.');
+    }
+
     setLoading(true);
     setProgress(isEn ? 'Creating booking...' : 'Membuat booking...');
 
@@ -160,7 +168,6 @@ export default function BookingFormScreen({ route, navigation }) {
           fd.append(`items[${i}][end_time]`, item.end_time);
         });
         fd.append('purpose', purpose);
-        if (notes.trim()) fd.append('notes', notes.trim());
         fd.append('ktp', {
           uri: ktp.uri,
           type: ktp.mimeType || 'image/jpeg',
@@ -171,7 +178,6 @@ export default function BookingFormScreen({ route, navigation }) {
         res = await bookingsApi.storeBatch({
           items,
           purpose,
-          notes: notes.trim() || undefined,
         }, idempotencyKey);
       }
 
@@ -355,19 +361,27 @@ export default function BookingFormScreen({ route, navigation }) {
           </Pressable>
         )}
 
-        {/* NOTES */}
-        <Text style={s.fieldLabel}>{isEn ? 'NOTES' : 'CATATAN'}</Text>
-        <View style={s.textarea}>
-          <TextInput
-            value={notes}
-            onChangeText={setNotes}
-            placeholder={isEn ? 'Optional' : 'Opsional'}
-            placeholderTextColor={colors.textFaint}
-            multiline
-            numberOfLines={3}
-            style={s.textareaInput}
+        {/* SYARAT & KETENTUAN */}
+        <Pressable 
+          style={s.termsRow} 
+          onPress={() => setAgreedToTerms(!agreedToTerms)}
+        >
+          <Ionicons 
+            name={agreedToTerms ? "checkbox" : "square-outline"} 
+            size={24} 
+            color={agreedToTerms ? colors.primary : colors.textMuted} 
           />
-        </View>
+          <Text style={s.termsText}>
+            {isEn ? 'I agree to the ' : 'Saya menyetujui '}
+            <Text 
+              style={s.termsLink} 
+              onPress={() => setShowTerms(true)}
+            >
+              {isEn ? 'Terms & Conditions' : 'Syarat & Ketentuan'}
+            </Text>
+            {isEn ? ' that apply.' : ' yang berlaku.'}
+          </Text>
+        </Pressable>
 
         {/* ✅ TOMBOL — Kalau H+2 tampil Chat GJB + WA, kalau tidak Buat Booking */}
         <PrimaryButton
@@ -384,7 +398,7 @@ export default function BookingFormScreen({ route, navigation }) {
               : 'arrow-forward'
           }
           loading={loading}
-          disabled={bookingQuota && bookingQuota.can_book === false}
+          disabled={(bookingQuota && bookingQuota.can_book === false) || !agreedToTerms}
           onPress={submit}
           style={{ marginTop: spacing.md }}
         />
@@ -404,6 +418,7 @@ export default function BookingFormScreen({ route, navigation }) {
           style={{ marginTop: spacing.sm }}
         />
       </ScrollView>
+      <TermsModal visible={showTerms} onClose={() => setShowTerms(false)} />
     </KeyboardAvoidingView>
   );
 }
@@ -438,6 +453,18 @@ const makeStyles = (c, t) => ({
   ktpPreview: { width: 140, height: 100, borderRadius: radius.md, overflow: 'hidden', position: 'relative' },
   ktpImage: { width: '100%', height: '100%' },
   ktpRemove: { position: 'absolute', top: 4, right: 4, width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center' },
+  termsRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    marginTop: spacing.lg, paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md, backgroundColor: c.surface,
+    borderRadius: radius.md, borderWidth: 1, borderColor: c.line,
+  },
+  termsText: {
+    ...t.body, fontSize: 13, flex: 1, lineHeight: 20,
+  },
+  termsLink: {
+    color: c.primary, fontWeight: '800', textDecorationLine: 'underline',
+  },
   textarea: { minHeight: 80, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: c.surface, borderRadius: radius.md, borderWidth: 1, borderColor: c.line },
   textareaInput: { color: c.text, fontSize: 14, textAlignVertical: 'top' },
 });
