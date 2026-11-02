@@ -61,11 +61,13 @@ export default function HomeHeader({ navigation, onOpenNotifications }) {
     <>
       <View style={[s.header, { paddingTop: insets.top + spacing.sm }]}>
         <Pressable onPress={openMenu} style={s.avatarBtn} hitSlop={6}>
-          {avatarUri ? (
+          {!isLoggedIn ? (
+            <Image source={require('../../assets/dispora-logo.png')} style={s.avatarImg} />
+          ) : avatarUri ? (
             <Image source={{ uri: avatarUri }} style={s.avatarImg} />
           ) : (
             <View style={s.avatarCircle}>
-              <Text style={s.avatarInitial}>{isLoggedIn ? initial : '?'}</Text>
+              <Text style={s.avatarInitial}>{initial}</Text>
             </View>
           )}
         </Pressable>

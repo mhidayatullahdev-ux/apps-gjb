@@ -1,5 +1,6 @@
 import Toast from 'react-native-toast-message';
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { authApi } from '../api/auth';
 import {
@@ -141,6 +142,26 @@ export function AuthProvider({ children }) {
   }, []);
 
   
+  // Polling booking quota setiap 10 detik selama app aktif di foreground
+  const appStateRef = useRef(AppState.currentState);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (appStateRef.current !== 'active' && state === 'active' && user) {
+        refreshProfile();
+      }
+      appStateRef.current = state;
+    });
+    return () => sub.remove();
+  }, [user, refreshProfile]);
+
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      if (appStateRef.current === 'active') refreshProfile();
+    }, 10 * 1000);
+    return () => clearInterval(interval);
+  }, [user, refreshProfile]);
+
   // ✅ Handle Token Expired (401) dari API
   useEffect(() => {
     setUnauthorizedHandler(() => {

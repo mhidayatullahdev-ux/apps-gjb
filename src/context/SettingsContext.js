@@ -69,15 +69,7 @@ export function SettingsProvider({ children }) {
   useEffect(() => {
     const interval = setInterval(() => {
       if (appStateRef.current === 'active') load();
-    }, 3 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [load]);
-
-  // Polling setiap 3 menit selama app aktif di foreground
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (appStateRef.current === 'active') load();
-    }, 3 * 60 * 1000);
+    }, 10 * 1000);
     return () => clearInterval(interval);
   }, [load]);
 

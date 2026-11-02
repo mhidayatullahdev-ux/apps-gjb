@@ -200,7 +200,6 @@ export default function FacilityDetailScreen({ route, navigation }) {
     settings.booking?.max_booking_date,
     settings.booking?.window_value,
     settings.booking?.window_unit,
-    settings.ready,
   ]);
 
   // Semua tanggal yang bisa dipilih (hari ini s/d max)
