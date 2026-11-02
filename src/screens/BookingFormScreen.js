@@ -349,8 +349,15 @@ export default function BookingFormScreen({ route, navigation }) {
                 {bookingQuota.message || (() => {
                   const lv = settings.booking?.limit_value || '1';
                   const lu = settings.booking?.limit_unit || 'week';
-                  const wt = settings.booking?.window_type || 'periode';
                   const unitLabel = lu === 'week' ? (isEn ? 'week' : 'minggu') : (isEn ? 'month' : 'bulan');
+                  if (bookingQuota.next_available_at) {
+                    const nextDate = new Date(bookingQuota.next_available_at)
+                      .toLocaleDateString(isEn ? 'en-GB' : 'id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+                    return isEn
+                      ? `You have reached the ${lv}x/${unitLabel} booking limit. Available again: ${nextDate}.`
+                      : `Anda sudah mencapai batas ${lv}x/${unitLabel}. Dapat booking lagi: ${nextDate}.`;
+                  }
+                  const wt = settings.booking?.window_type || 'periode';
                   const resetHint = wt === 'periode'
                     ? (lu === 'week'
                         ? (isEn ? 'Resets every Monday.' : 'Reset setiap Senin.')
