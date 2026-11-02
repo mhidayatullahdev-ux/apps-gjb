@@ -40,12 +40,14 @@ const SettingsContext = createContext(null);
 export function SettingsProvider({ children }) {
   const [data, setData] = useState(FALLBACK);
   const [ready, setReady] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await settingsApi.get();
       if (res && res.settings) setData(res);
-    } catch {} finally { setReady(true); }
+    } catch {} finally { setReady(true); setLoading(false); }
   }, []);
 
   // Load awal
@@ -63,6 +65,22 @@ export function SettingsProvider({ children }) {
     return () => sub.remove();
   }, [load]);
 
+  // Polling setiap 3 menit selama app aktif di foreground
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (appStateRef.current === 'active') load();
+    }, 3 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [load]);
+
+  // Polling setiap 3 menit selama app aktif di foreground
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (appStateRef.current === 'active') load();
+    }, 3 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [load]);
+
   const value = useMemo(() => {
     const s = data.settings || FALLBACK.settings;
     const o = data.options || FALLBACK.options;
@@ -77,7 +95,7 @@ export function SettingsProvider({ children }) {
       ? `https://wa.me/${String(s.contact.whatsapp).replace(/\D/g, '')}` : null;
 
     return {
-      ready, reload: load, raw: data,
+      ready, loading, reload: load, raw: data,
       tagline: s.general.tagline,
       contact: s.contact, whatsappUrl,
       social: s.social, payment: s.payment,
@@ -89,7 +107,7 @@ export function SettingsProvider({ children }) {
       bookingStatuses: o.booking_statuses || {}, paymentStatuses: o.payment_statuses || {},
       sportLabel, bookingStatusLabel, paymentStatusLabel,
     };
-  }, [data, ready, load]);
+  }, [data, ready, loading, load]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }
