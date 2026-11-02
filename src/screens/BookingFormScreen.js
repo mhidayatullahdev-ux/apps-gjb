@@ -346,10 +346,20 @@ export default function BookingFormScreen({ route, navigation }) {
                 {isEn ? 'Booking Unavailable' : 'Booking Tidak Tersedia'}
               </Text>
               <Text style={{ color: '#8B6914', fontSize: 12, lineHeight: 18 }}>
-                {bookingQuota.message ||
-                  (isEn
-                    ? 'You have already booked once this week. You can book again next Monday.'
-                    : 'Anda sudah booking 1x minggu ini. Bisa booking lagi mulai Senin depan.')}
+                {bookingQuota.message || (() => {
+                  const lv = settings.booking?.limit_value || '1';
+                  const lu = settings.booking?.limit_unit || 'week';
+                  const wt = settings.booking?.window_type || 'periode';
+                  const unitLabel = lu === 'week' ? (isEn ? 'week' : 'minggu') : (isEn ? 'month' : 'bulan');
+                  const resetHint = wt === 'periode'
+                    ? (lu === 'week'
+                        ? (isEn ? 'Resets every Monday.' : 'Reset setiap Senin.')
+                        : (isEn ? 'Resets every 1st of the month.' : 'Reset setiap tanggal 1.'))
+                    : (isEn ? 'Resets after the booking period ends.' : 'Reset setelah periode booking berakhir.');
+                  return isEn
+                    ? `You have reached the ${lv}x/${unitLabel} booking limit. ${resetHint}`
+                    : `Anda sudah mencapai batas ${lv}x/${unitLabel}. ${resetHint}`;
+                })()}
               </Text>
               {bookingQuota.next_available_at ? (
                 <Text style={{ color: '#8B6914', fontSize: 11, marginTop: 4, fontStyle: 'italic' }}>
