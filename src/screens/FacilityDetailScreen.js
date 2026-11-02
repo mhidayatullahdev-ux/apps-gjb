@@ -196,7 +196,12 @@ export default function FacilityDetailScreen({ route, navigation }) {
     else if (wu === 'month') fallback.setMonth(fallback.getMonth() + wv);
     else fallback.setDate(fallback.getDate() + wv);
     return fallback;
-  }, [settings.booking]);
+  }, [
+    settings.booking?.max_booking_date,
+    settings.booking?.window_value,
+    settings.booking?.window_unit,
+    settings.ready,
+  ]);
 
   // Semua tanggal yang bisa dipilih (hari ini s/d max)
   const bookingDates = useMemo(() => {

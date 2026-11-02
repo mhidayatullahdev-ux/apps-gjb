@@ -80,7 +80,7 @@ export default function FacilitiesScreen({ navigation }) {
       <FadeInUp delay={stagger(index)}>
         <PressableScale onPress={() => open(item)} style={s.card}>
           <View style={s.media}>
-            <SmartImage uri={item.image_url} style={s.image} icon="business-outline" label={item.name} showLoader={false} />
+            <SmartImage uri={item.image_url || item.image} style={s.image} icon="business-outline" label={item.name} showLoader={false} />
             <LinearGradient colors={['rgba(11,12,16,0.25)', 'transparent', 'rgba(11,12,16,0.8)']}
               style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
             <View style={s.badgeRow}>

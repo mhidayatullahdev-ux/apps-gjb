@@ -348,8 +348,8 @@ export default function BookingFormScreen({ route, navigation }) {
               <Text style={{ color: '#8B6914', fontSize: 12, lineHeight: 18 }}>
                 {bookingQuota.message ||
                   (isEn
-                    ? 'You cannot book right now.'
-                    : 'Anda tidak bisa booking saat ini.')}
+                    ? 'You have already booked once this week. You can book again next Monday.'
+                    : 'Anda sudah booking 1x minggu ini. Bisa booking lagi mulai Senin depan.')}
               </Text>
               {bookingQuota.next_available_at ? (
                 <Text style={{ color: '#8B6914', fontSize: 11, marginTop: 4, fontStyle: 'italic' }}>

@@ -278,7 +278,7 @@ const dict = {
     'auth.loginTitle': 'Sign in',
     'auth.loginSubtitle': 'Sign in to book facilities and track tickets.',
     'auth.registerTitle': 'Sign up',
-    'auth.registerSubtitle': 'Create an account to start using Dispora services.',
+    'auth.registerSubtitle': 'Create an account to start using GJB Jakbar services.',
     'auth.name': 'Full name',
     'auth.email': 'Email',
     'auth.phone': 'Phone number',
@@ -324,9 +324,9 @@ const dict = {
     'home.athletes': 'INSPIRING ',
     'home.athletesAccent': 'PROFILES',
     'home.athletesCaption': 'Talented faces and the spirit of excellence from Jakarta.',
-    'home.latest': 'LATEST FROM DISPORA',
+    'home.latest': 'LATEST FROM GJB JAKBAR',
     'home.stats': 'REALTIME TRAFFIC',
-    'home.statsCaption': 'Dispora active stats',
+    'home.statsCaption': 'GJB Jakbar active stats',
     'home.helpdesk': 'GJB Helpdesk',
     'home.helpdeskBody': 'Service ticket flow, handling SLA, and the digital help centre.',
     'home.openHelpdesk': 'Open helpdesk',
@@ -348,7 +348,7 @@ const dict = {
 
     // ============ FACILITIES ============
     'facilities.title': 'Facilities',
-    'facilities.caption': 'Dispora-owned sports facilities available for booking.',
+    'facilities.caption': 'GJB Jakbar sports facilities available for booking.',
     'facilities.searchPlaceholder': 'Search facilities...',
     'facilities.empty': 'No facilities found',
     'facilities.emptyHint': 'Try another keyword or pick a different area.',
@@ -356,7 +356,7 @@ const dict = {
 
     // ============ EVENTS ============
     'events.title': 'Events',
-    'events.caption': 'Activities, championships, and training by Dispora DKI Jakarta.',
+    'events.caption': 'Activities, championships, and training by GJB Jakbar.',
     'events.empty': 'No events in this category yet',
     'events.detail': 'Event detail',
     'events.about': 'About this event',
@@ -366,7 +366,7 @@ const dict = {
 
     // ============ NEWS ============
     'news.title': 'News',
-    'news.caption': 'Latest updates from Dispora DKI Jakarta.',
+    'news.caption': 'Latest updates from GJB Jakbar.',
     'news.searchPlaceholder': 'Search news...',
     'news.empty': 'No news found',
     'news.detail': 'News detail',
@@ -400,7 +400,7 @@ const dict = {
     // ============ CHAT ============
     'chat.title': 'Tanya GJB',
     'chat.placeholder': 'Type a message...',
-    'chat.greeting': 'Hi! How can I help you with Dispora DKI Jakarta services?',
+    'chat.greeting': 'Hi! How can I help you with GJB Jakbar services?',
     'chat.error': 'Failed to send. Check your connection and try again.',
     'chat.typing': 'Typing...',
 
