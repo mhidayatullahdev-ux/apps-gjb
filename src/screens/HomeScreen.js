@@ -202,23 +202,14 @@ export default function HomeScreen({ navigation }) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.quotaTitle}>
-              {lang === 'en' ? 'Booking Unavailable' : 'Booking Tidak Tersedia'}
+              {bookingQuota.title || (lang === 'en' ? 'Booking Unavailable' : 'Pemesanan Tidak Tersedia')}
             </Text>
             <Text style={s.quotaBody}>
               {bookingQuota.message ||
                 (lang === 'en'
-                  ? 'You can only book once every 7 days.'
-                  : 'Anda hanya bisa booking 1x setiap 7 hari.')}
+                  ? 'You have made a booking this week. Booking can only be done once a week.'
+                  : 'Anda sudah melakukan pemesanan pada minggu ini. Pemesanan hanya dapat dilakukan 1x dalam seminggu.')}
             </Text>
-            {bookingQuota.next_available_at ? (
-              <Text style={s.quotaDate}>
-                {lang === 'en' ? 'Available again: ' : 'Bisa booking lagi: '}
-                {new Date(bookingQuota.next_available_at).toLocaleDateString(
-                  lang === 'en' ? 'en-GB' : 'id-ID',
-                  { day: 'numeric', month: 'long', year: 'numeric' }
-                )}
-              </Text>
-            ) : null}
           </View>
         </View>
       ) : null}

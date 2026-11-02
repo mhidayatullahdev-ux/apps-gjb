@@ -343,31 +343,13 @@ export default function BookingFormScreen({ route, navigation }) {
             <Ionicons name="lock-closed-outline" size={20} color="#8B6914" />
             <View style={{ flex: 1 }}>
               <Text style={{ color: '#8B6914', fontSize: 13, fontWeight: '900', marginBottom: 2 }}>
-                {isEn ? 'Booking Unavailable' : 'Booking Tidak Tersedia'}
+                {bookingQuota.title || (isEn ? 'Booking Unavailable' : 'Pemesanan Tidak Tersedia')}
               </Text>
               <Text style={{ color: '#8B6914', fontSize: 12, lineHeight: 18 }}>
-                {bookingQuota.message || (() => {
-                  const lv = settings.booking?.limit_value || '1';
-                  const lu = settings.booking?.limit_unit || 'week';
-                  const unitLabel = lu === 'week' ? (isEn ? 'week' : 'minggu') : (isEn ? 'month' : 'bulan');
-                  if (bookingQuota.next_available_at) {
-                    const d = new Date(bookingQuota.next_available_at);
-                    const nextDate = d.toLocaleDateString(isEn ? 'en-GB' : 'id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-                    const nextTime = d.toLocaleTimeString(isEn ? 'en-GB' : 'id-ID', { hour: '2-digit', minute: '2-digit' });
-                    return isEn
-                      ? `You have reached the ${lv}x/${unitLabel} booking limit. Available again: ${nextDate} ${nextTime}.`
-                      : `Anda sudah mencapai batas ${lv}x/${unitLabel}. Dapat booking lagi: ${nextDate} ${nextTime}.`;
-                  }
-                  const wt = settings.booking?.window_type || 'periode';
-                  const resetHint = wt === 'periode'
-                    ? (lu === 'week'
-                        ? (isEn ? 'Resets every Monday.' : 'Reset setiap Senin.')
-                        : (isEn ? 'Resets every 1st of the month.' : 'Reset setiap tanggal 1.'))
-                    : (isEn ? 'Resets after the booking period ends.' : 'Reset setelah periode booking berakhir.');
-                  return isEn
-                    ? `You have reached the ${lv}x/${unitLabel} booking limit. ${resetHint}`
-                    : `Anda sudah mencapai batas ${lv}x/${unitLabel}. ${resetHint}`;
-                })()}
+                {bookingQuota.message ||
+                  (isEn
+                    ? 'You have made a booking this week. Booking can only be done once a week. Please choose a date in another week.'
+                    : 'Anda sudah melakukan pemesanan pada minggu ini. Pemesanan hanya dapat dilakukan 1x dalam seminggu. Silakan pilih tanggal pada minggu lainnya.')}
               </Text>
             </View>
           </View>
