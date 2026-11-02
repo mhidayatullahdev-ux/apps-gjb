@@ -351,11 +351,12 @@ export default function BookingFormScreen({ route, navigation }) {
                   const lu = settings.booking?.limit_unit || 'week';
                   const unitLabel = lu === 'week' ? (isEn ? 'week' : 'minggu') : (isEn ? 'month' : 'bulan');
                   if (bookingQuota.next_available_at) {
-                    const nextDate = new Date(bookingQuota.next_available_at)
-                      .toLocaleDateString(isEn ? 'en-GB' : 'id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+                    const d = new Date(bookingQuota.next_available_at);
+                    const nextDate = d.toLocaleDateString(isEn ? 'en-GB' : 'id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                    const nextTime = d.toLocaleTimeString(isEn ? 'en-GB' : 'id-ID', { hour: '2-digit', minute: '2-digit' });
                     return isEn
-                      ? `You have reached the ${lv}x/${unitLabel} booking limit. Available again: ${nextDate}.`
-                      : `Anda sudah mencapai batas ${lv}x/${unitLabel}. Dapat booking lagi: ${nextDate}.`;
+                      ? `You have reached the ${lv}x/${unitLabel} booking limit. Available again: ${nextDate} ${nextTime}.`
+                      : `Anda sudah mencapai batas ${lv}x/${unitLabel}. Dapat booking lagi: ${nextDate} ${nextTime}.`;
                   }
                   const wt = settings.booking?.window_type || 'periode';
                   const resetHint = wt === 'periode'
@@ -368,12 +369,6 @@ export default function BookingFormScreen({ route, navigation }) {
                     : `Anda sudah mencapai batas ${lv}x/${unitLabel}. ${resetHint}`;
                 })()}
               </Text>
-              {bookingQuota.next_available_at ? (
-                <Text style={{ color: '#8B6914', fontSize: 11, marginTop: 4, fontStyle: 'italic' }}>
-                  {isEn ? 'Available again: ' : 'Dapat booking lagi: '}
-                  {new Date(bookingQuota.next_available_at).toLocaleString(isEn ? 'en-GB' : 'id-ID')}
-                </Text>
-              ) : null}
             </View>
           </View>
         ) : null}
