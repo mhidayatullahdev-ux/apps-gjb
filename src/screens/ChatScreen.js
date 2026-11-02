@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { usePolling } from '../hooks/usePolling';
 import {
   View, Text, TextInput, Pressable, FlatList,
   KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -28,6 +29,7 @@ export default function ChatScreen({ route }) {
   const listRef = useRef(null);
   const lastServerIdRef = useRef(0);
   const unsubscribeRef = useRef(null);
+  const adminTypingTimerRef = useRef(null);
 
   const prefill = route.params?.prefill;
 
@@ -36,6 +38,11 @@ export default function ChatScreen({ route }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adminTyping, setAdminTyping] = useState(false);
+
+  // Cleanup adminTyping timer saat unmount
+  useEffect(() => () => {
+    if (adminTypingTimerRef.current) clearTimeout(adminTypingTimerRef.current);
+  }, []);
 
   const scrollToEnd = useCallback(() => {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
@@ -143,34 +150,27 @@ export default function ChatScreen({ route }) {
   }, [user?.id, scrollToEnd]);
 
 
-  // ✅ Fallback: Polling pesan baru setiap 5 detik (jika WebSocket terputus)
-  useEffect(() => {
-    if (!user?.id) return;
-    
-    const interval = setInterval(async () => {
-      try {
-        const res = await chatApi.messages(lastServerIdRef.current);
-        const newMessages = res.messages || [];
-        
-        if (newMessages.length > 0) {
-          const mappedList = newMessages.map(mapServer);
-          setMessages((prev) => {
-            const existingIds = new Set(prev.map(m => m.serverId).filter(Boolean));
-            const uniqueNew = mappedList.filter(m => !existingIds.has(m.serverId));
-            if (uniqueNew.length > 0) {
-              if (lastServerIdRef.current < uniqueNew[uniqueNew.length - 1].serverId) {
-                lastServerIdRef.current = uniqueNew[uniqueNew.length - 1].serverId;
-              }
-              return [...prev, ...uniqueNew];
-            }
-            return prev;
-          });
-        }
-      } catch (e) {}
-    }, 5000);
+  // Fallback polling 15 detik jika WebSocket terputus
+  // Berhenti otomatis saat layar tidak fokus atau app di-background
+  const pollMessages = useCallback(async () => {
+    try {
+      const res = await chatApi.messages(lastServerIdRef.current);
+      const newMessages = res.messages || [];
+      if (newMessages.length > 0) {
+        const mappedList = newMessages.map(mapServer);
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map(m => m.serverId).filter(Boolean));
+          const uniqueNew = mappedList.filter(m => !existingIds.has(m.serverId));
+          if (uniqueNew.length === 0) return prev;
+          const last = uniqueNew[uniqueNew.length - 1];
+          if (last.serverId > lastServerIdRef.current) lastServerIdRef.current = last.serverId;
+          return [...prev, ...uniqueNew];
+        });
+      }
+    } catch {}
+  }, [mapServer]);
 
-    return () => clearInterval(interval);
-  }, [user?.id, mapServer]);
+  usePolling(pollMessages, 15000, !!user?.id);
 
   const send = async () => {
     const text = input.trim();
@@ -201,7 +201,8 @@ export default function ChatScreen({ route }) {
       }
       // Tampilkan "Admin sedang mengetik..." sebentar
       setAdminTyping(true);
-      setTimeout(() => setAdminTyping(false), 6000);
+      if (adminTypingTimerRef.current) clearTimeout(adminTypingTimerRef.current);
+      adminTypingTimerRef.current = setTimeout(() => setAdminTyping(false), 6000);
     } catch {
       setMessages((prev) => [
         ...prev,

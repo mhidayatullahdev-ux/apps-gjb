@@ -1,4 +1,5 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { settingsApi } from '../api/settings';
 
 const FALLBACK = {
@@ -11,6 +12,7 @@ const FALLBACK = {
     retribution: { content: null },
     booking: { history_days: 30 },
     reschedule: { min_days_before: 1, max_times: 1, terms: '' },
+    closure: { periods: [] },
   },
   options: {
     sport_types: [
@@ -46,7 +48,20 @@ export function SettingsProvider({ children }) {
     } catch {} finally { setReady(true); }
   }, []);
 
+  // Load awal
   useEffect(() => { load(); }, [load]);
+
+  // Reload saat app kembali ke foreground — settings bisa berubah dari CMS
+  const appStateRef = useRef(AppState.currentState);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (appStateRef.current !== 'active' && state === 'active') {
+        load();
+      }
+      appStateRef.current = state;
+    });
+    return () => sub.remove();
+  }, [load]);
 
   const value = useMemo(() => {
     const s = data.settings || FALLBACK.settings;
@@ -67,6 +82,7 @@ export function SettingsProvider({ children }) {
       contact: s.contact, whatsappUrl,
       social: s.social, payment: s.payment,
       pricing: s.pricing, booking: s.booking, reschedule: s.reschedule,
+      closure: s.closure || { periods: [] },
       terms: s.terms || { content: null },
       retribution: s.retribution || { content: null },
       sportTypes: o.sport_types || [], purposes: o.purposes || [],

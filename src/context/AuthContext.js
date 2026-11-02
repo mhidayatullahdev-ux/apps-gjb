@@ -2,8 +2,12 @@ import Toast from 'react-native-toast-message';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { authApi } from '../api/auth';
-import { getToken, setToken, setUnauthorizedHandler } from '../api/client';
+import {
+  getToken, setToken, setUnauthorizedHandler,
+  getStoredUser, setStoredUser, getStoredQuota, setStoredQuota,
+} from '../api/client';
 import { disconnectEcho } from '../api/echo';
+import { navigateToLogin } from '../hooks/useDeepLinking';
 import { registerForPushNotifications } from '../services/notifications';
 
 const AuthContext = createContext(null);
@@ -18,12 +22,38 @@ export function AuthProvider({ children }) {
       try {
         const saved = await getToken();
         if (saved) {
-          const res = await authApi.profile();
-          setUser(res.user);
+          // Tampilkan data cache dulu agar tidak flicker saat app dibuka
+          const [cachedUser, cachedQuota] = await Promise.all([
+            getStoredUser(),
+            getStoredQuota(),
+          ]);
+          if (cachedUser) {
+            setUser(cachedUser);
+            if (cachedQuota) setBookingQuota(cachedQuota);
+          }
+
+          // Validasi token ke server
+          try {
+            const res = await authApi.profile();
+            setUser(res.user);
+            await setStoredUser(res.user);
+            if (res.booking_quota) {
+              setBookingQuota(res.booking_quota);
+              await setStoredQuota(res.booking_quota);
+            }
+          } catch (e) {
+            if (e?.status === 401) {
+              // Token expired → clear semua
+              await setToken(null);
+              await Promise.all([setStoredUser(null), setStoredQuota(null)]);
+              setUser(null);
+              setBookingQuota(null);
+            }
+            // Network/timeout error → biarkan cache tetap aktif (user tetap login)
+          }
         }
       } catch {
-        await setToken(null);
-        setUser(null);
+        // Error storage tak terduga → biarkan saja
       } finally {
         setReady(true);
       }
@@ -34,7 +64,11 @@ export function AuthProvider({ children }) {
     const res = await authApi.register(payload);
     await setToken(res.token);
     setUser(res.user);
-    if (res.booking_quota) setBookingQuota(res.booking_quota);
+    await setStoredUser(res.user);
+    if (res.booking_quota) {
+      setBookingQuota(res.booking_quota);
+      await setStoredQuota(res.booking_quota);
+    }
     return res;
   }, []);
 
@@ -42,16 +76,17 @@ export function AuthProvider({ children }) {
     const res = await authApi.login(payload);
     await setToken(res.token);
     setUser(res.user);
-    if (res.booking_quota) setBookingQuota(res.booking_quota);
-  
+    await setStoredUser(res.user);
+    if (res.booking_quota) {
+      setBookingQuota(res.booking_quota);
+      await setStoredQuota(res.booking_quota);
+    }
+
     try {
-      const pushToken = await registerForPushNotifications(); // safe-call
-      if (pushToken) {
-        // Optional: kirim ke backend untuk simpan
-        await authApi.savePushToken(pushToken);
-      }
+      const pushToken = await registerForPushNotifications();
+      if (pushToken) await authApi.savePushToken(pushToken);
     } catch {}
-  
+
     return res;
   }, []);
 
@@ -59,30 +94,48 @@ export function AuthProvider({ children }) {
     const res = await authApi.google(payload);
     await setToken(res.token);
     setUser(res.user);
-    if (res.booking_quota) setBookingQuota(res.booking_quota);
+    await setStoredUser(res.user);
+    if (res.booking_quota) {
+      setBookingQuota(res.booking_quota);
+      await setStoredQuota(res.booking_quota);
+    }
+
+    try {
+      const pushToken = await registerForPushNotifications();
+      if (pushToken) await authApi.savePushToken(pushToken);
+    } catch {}
+
     return res;
   }, []);
 
   const completeProfile = useCallback(async (payload) => {
     const res = await authApi.completeProfile(payload);
     setUser(res.user);
-    if (res.booking_quota) setBookingQuota(res.booking_quota);
+    await setStoredUser(res.user);
+    if (res.booking_quota) {
+      setBookingQuota(res.booking_quota);
+      await setStoredQuota(res.booking_quota);
+    }
     return res;
   }, []);
 
   const refreshProfile = useCallback(async () => {
     const res = await authApi.profile();
     setUser(res.user);
-    if (res.booking_quota) setBookingQuota(res.booking_quota);
+    await setStoredUser(res.user);
+    if (res.booking_quota) {
+      setBookingQuota(res.booking_quota);
+      await setStoredQuota(res.booking_quota);
+    }
     return res.user;
   }, []);
 
   const logout = useCallback(async () => {
     try { await GoogleSignin.signOut(); } catch {}
-    // Putuskan WebSocket dulu sebelum token dihapus
     disconnectEcho();
     try { await authApi.logout(); } catch {}
     await setToken(null);
+    await Promise.all([setStoredUser(null), setStoredQuota(null)]);
     setUser(null);
     setBookingQuota(null);
   }, []);
@@ -102,11 +155,13 @@ export function AuthProvider({ children }) {
             visibilityTime: 4000,
           });
           
-          // Clear token secara lokal TANPA memanggil API logout (biar gak 401 lagi)
-          setToken(null).then(() => {
+          // Clear semua data lokal TANPA memanggil API logout (biar gak 401 lagi)
+          Promise.all([setToken(null), setStoredUser(null), setStoredQuota(null)]).then(() => {
             setUser(null);
             setBookingQuota(null);
             try { disconnectEcho(); } catch {}
+            // Redirect ke Login setelah toast sempat tampil
+            setTimeout(() => navigateToLogin(), 500);
           });
         }
         return null;

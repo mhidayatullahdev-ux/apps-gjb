@@ -22,6 +22,22 @@ export default function ForgotPasswordScreen({ navigation }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [showRegisterHint, setShowRegisterHint] = useState(false);
+
+  const isEmailNotFound = (e) => {
+    const status = e?.status;
+    const msg = (e?.message || '').toLowerCase();
+    if (status === 404) return true;
+    return (
+      msg.includes('not found') ||
+      msg.includes('tidak ditemukan') ||
+      msg.includes('tidak terdaftar') ||
+      msg.includes('belum terdaftar') ||
+      msg.includes("can't find") ||
+      msg.includes('no account') ||
+      msg.includes('email salah')
+    );
+  };
 
   const submit = async () => {
     setError('');
@@ -36,7 +52,12 @@ export default function ForgotPasswordScreen({ navigation }) {
       setSent(true);
     } catch (e) {
       haptic.error();
-      setError(e.message || 'Gagal mengirim kode. Coba lagi.');
+      if (isEmailNotFound(e)) {
+        setError('Email ini belum terdaftar. Silakan daftar akun terlebih dahulu.');
+        setShowRegisterHint(true);
+      } else {
+        setError(e.message || 'Gagal mengirim kode. Coba lagi.');
+      }
     } finally {
       setLoading(false);
     }
@@ -101,13 +122,24 @@ export default function ForgotPasswordScreen({ navigation }) {
           <Notice text={error} tone="primary" icon="alert-circle-outline" />
         ) : null}
 
+        {showRegisterHint ? (
+          <Pressable
+            onPress={() => navigation.replace('Register')}
+            style={s.registerHint}
+          >
+            <Ionicons name="person-add-outline" size={15} color={colors.primary} />
+            <Text style={s.registerHintText}>Daftar Akun Sekarang</Text>
+            <Ionicons name="arrow-forward" size={13} color={colors.primary} />
+          </Pressable>
+        ) : null}
+
         <View style={s.field}>
           <Text style={s.label}>Email</Text>
           <View style={s.inputBox}>
             <Ionicons name="mail-outline" size={17} color={colors.textFaint} />
             <TextInput
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(v) => { setEmail(v); setShowRegisterHint(false); setError(''); }}
               placeholder="nama@email.com"
               placeholderTextColor={colors.textFaint}
               autoCapitalize="none"
@@ -160,6 +192,13 @@ const makeStyles = (c, t) => ({
     alignSelf: 'center', paddingVertical: spacing.lg, marginTop: spacing.md,
   },
   backText: { color: c.textMuted, fontSize: 13, fontWeight: '700' },
+  registerHint: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: spacing.md, paddingHorizontal: spacing.lg,
+    backgroundColor: c.primarySoft, borderRadius: radius.md,
+    borderWidth: 1, borderColor: c.primary,
+  },
+  registerHintText: { color: c.primary, fontSize: 13, fontWeight: '800', flex: 1, textAlign: 'center' },
 
   successWrap: {
     flex: 1, alignItems: 'center', justifyContent: 'center',

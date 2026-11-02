@@ -255,37 +255,6 @@ export default function BookingFormScreen({ route, navigation }) {
           <Text style={[s.value, { color: colors.primary, fontWeight: '900' }]}>{purpose}</Text>
         </View>
 
-        {/* ✅ Quota Banner */}
-        {bookingQuota && bookingQuota.can_book === false ? (
-          <View style={{
-            flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-            padding: spacing.md,
-            backgroundColor: '#8B6914' + '20',
-            borderRadius: 10,
-            borderWidth: 1, borderColor: '#8B6914',
-            marginBottom: spacing.sm,
-          }}>
-            <Ionicons name="lock-closed-outline" size={20} color="#8B6914" />
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: '#8B6914', fontSize: 13, fontWeight: '900', marginBottom: 2 }}>
-                {isEn ? 'Booking Unavailable' : 'Booking Tidak Tersedia'}
-              </Text>
-              <Text style={{ color: '#8B6914', fontSize: 12, lineHeight: 18 }}>
-                {bookingQuota.message ||
-                  (isEn
-                    ? 'You cannot book right now.'
-                    : 'Anda tidak bisa booking saat ini.')}
-              </Text>
-              {bookingQuota.next_available_at ? (
-                <Text style={{ color: '#8B6914', fontSize: 11, marginTop: 4, fontStyle: 'italic' }}>
-                  {isEn ? 'Available again: ' : 'Dapat booking lagi: '}
-                  {new Date(bookingQuota.next_available_at).toLocaleString(isEn ? 'en-GB' : 'id-ID')}
-                </Text>
-              ) : null}
-            </View>
-          </View>
-        ) : null}
-
         {error ? <Notice text={error} tone="primary" icon="alert-circle-outline" /> : null}
 
         {/* CABOR */}
@@ -307,7 +276,7 @@ export default function BookingFormScreen({ route, navigation }) {
         </View>
 
         {/* ✅ FAR DATE NOTICE — Booking > 1 hari ke depan */}
-        {true ? (
+        {isBookingFarDate ? (
           <View style={s.farDateBox}>
             <Ionicons name="information-circle" size={20} color={colors.gold} />
             <View style={{ flex: 1 }}>
@@ -361,8 +330,38 @@ export default function BookingFormScreen({ route, navigation }) {
           </Pressable>
         )}
 
+        {/* ✅ Quota Banner — di atas Syarat & Ketentuan */}
+        {bookingQuota && bookingQuota.can_book === false ? (
+          <View style={{
+            flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+            padding: spacing.md,
+            backgroundColor: '#8B6914' + '20',
+            borderRadius: 10,
+            borderWidth: 1, borderColor: '#8B6914',
+          }}>
+            <Ionicons name="lock-closed-outline" size={20} color="#8B6914" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#8B6914', fontSize: 13, fontWeight: '900', marginBottom: 2 }}>
+                {isEn ? 'Booking Unavailable' : 'Booking Tidak Tersedia'}
+              </Text>
+              <Text style={{ color: '#8B6914', fontSize: 12, lineHeight: 18 }}>
+                {bookingQuota.message ||
+                  (isEn
+                    ? 'You cannot book right now.'
+                    : 'Anda tidak bisa booking saat ini.')}
+              </Text>
+              {bookingQuota.next_available_at ? (
+                <Text style={{ color: '#8B6914', fontSize: 11, marginTop: 4, fontStyle: 'italic' }}>
+                  {isEn ? 'Available again: ' : 'Dapat booking lagi: '}
+                  {new Date(bookingQuota.next_available_at).toLocaleString(isEn ? 'en-GB' : 'id-ID')}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
         {/* SYARAT & KETENTUAN */}
-        <Pressable 
+        <Pressable
           style={s.termsRow} 
           onPress={() => setAgreedToTerms(!agreedToTerms)}
         >

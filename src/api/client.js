@@ -50,6 +50,9 @@ export function setUnauthorizedHandler(handler) {
   onUnauthorized = handler;
 }
 
+const USER_KEY = 'dispora.user';
+const QUOTA_KEY = 'dispora.quota';
+
 export async function getToken() {
   try { return await AsyncStorage.getItem(TOKEN_KEY); } catch { return null; }
 }
@@ -58,6 +61,34 @@ export async function setToken(token) {
   try {
     if (token) await AsyncStorage.setItem(TOKEN_KEY, token);
     else await AsyncStorage.removeItem(TOKEN_KEY);
+  } catch {}
+}
+
+export async function getStoredUser() {
+  try {
+    const raw = await AsyncStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+export async function setStoredUser(user) {
+  try {
+    if (user) await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+    else await AsyncStorage.removeItem(USER_KEY);
+  } catch {}
+}
+
+export async function getStoredQuota() {
+  try {
+    const raw = await AsyncStorage.getItem(QUOTA_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+export async function setStoredQuota(quota) {
+  try {
+    if (quota) await AsyncStorage.setItem(QUOTA_KEY, JSON.stringify(quota));
+    else await AsyncStorage.removeItem(QUOTA_KEY);
   } catch {}
 }
 

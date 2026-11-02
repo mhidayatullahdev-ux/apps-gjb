@@ -2,6 +2,7 @@
 import React, {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { notificationsApi } from '../api/notifications';
 import { initEcho } from '../api/echo';
@@ -18,6 +19,12 @@ export function NotificationsProvider({ children }) {
   const [readIds, setReadIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const readIdsLoaded = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => { appStateRef.current = state; });
+    return () => sub.remove();
+  }, []);
 
   // ==== Load readIds dari storage sekali ====
   useEffect(() => {
@@ -65,18 +72,27 @@ export function NotificationsProvider({ children }) {
   // Load awal
   useEffect(() => { load(); }, [load]);
 
+  // ==== Persist readIds ke storage saat berubah ====
+  useEffect(() => {
+    if (!readIdsLoaded.current) return;
+    persistReadIds(readIds);
+  }, [readIds]);
+
   // ==== Real-time refresh saat chat baru ====
   useEffect(() => {
     if (!isLoggedIn || !user?.id) return;
-    let channel = null;
+    let chatChannel = null;
+    let notifChannel = null;
+    let echoRef = null;
     let isActive = true;
 
     (async () => {
       const echo = await initEcho();
       if (!echo || !isActive) return;
-      
+      echoRef = echo;
+
       // Listener Notifikasi Sistem (Booking, Pembayaran, dll)
-      const notifChannel = echo.private(`App.Models.User.${user.id}`);
+      notifChannel = echo.private(`App.Models.User.${user.id}`);
       notifChannel.notification((notification) => {
         if (!isActive) return;
         Notifications.scheduleNotificationAsync({
@@ -88,14 +104,13 @@ export function NotificationsProvider({ children }) {
           },
           trigger: null,
         }).catch(() => {});
-        load(); // Refresh daftar notifikasi
+        load();
       });
 
-      channel = echo.private(`chat.${user.id}`);
-      channel.listen('.new-message', (data) => {
+      chatChannel = echo.private(`chat.${user.id}`);
+      chatChannel.listen('.new-message', (data) => {
         if (!isActive) return;
         if (data.sender_type === 'admin') {
-          // ✅ Munculkan Notifikasi Asli HP (Heads-up)
           Notifications.scheduleNotificationAsync({
             content: {
               title: 'Pesan Baru dari Admin',
@@ -103,10 +118,8 @@ export function NotificationsProvider({ children }) {
               data: { type: 'chat_reply' },
               sound: true,
             },
-            trigger: null, // null = langsung muncul saat itu juga
+            trigger: null,
           }).catch(() => {});
-          
-          // Tetap panggil load untuk update badge di tab bawah
           load();
         }
       });
@@ -114,30 +127,32 @@ export function NotificationsProvider({ children }) {
 
     return () => {
       isActive = false;
-      if (channel) {
-        try { channel.stopListening('.new-message'); } catch {}
-        try { echo.leave(`App.Models.User.${user.id}`); } catch {}
+      if (chatChannel) {
+        try { chatChannel.stopListening('.new-message'); } catch {}
+      }
+      if (echoRef) {
+        try { echoRef.leave(`chat.${user.id}`); } catch {}
+        try { echoRef.leave(`App.Models.User.${user.id}`); } catch {}
       }
     };
   }, [isLoggedIn, user?.id, load]);
 
-  // Fallback polling 60 detik
+  // Fallback polling 60 detik — skip saat app di-background
   useEffect(() => {
     if (!isLoggedIn) return;
-    const interval = setInterval(load, 60000);
+    const interval = setInterval(() => {
+      if (appStateRef.current === 'active') load();
+    }, 60000);
     return () => clearInterval(interval);
   }, [isLoggedIn, load]);
 
   // ==== Mark satu baca ====
   const markRead = useCallback(async (id) => {
-    // Update readIds lokal
     setReadIds((prev) => {
       const next = new Set(prev);
       next.add(String(id));
-      persistReadIds(next);
       return next;
     });
-    // Update item lokal (biar UI langsung update)
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
 
     try {
@@ -153,7 +168,6 @@ export function NotificationsProvider({ children }) {
     setReadIds((prev) => {
       const next = new Set(prev);
       ids.forEach((id) => next.add(id));
-      persistReadIds(next);
       return next;
     });
     setItems((prev) => prev.map((n) => ({ ...n, is_read: true })));
@@ -176,7 +190,6 @@ export function NotificationsProvider({ children }) {
     setReadIds((prev) => {
       const next = new Set(prev);
       chatIds.forEach((id) => next.add(id));
-      persistReadIds(next);
       return next;
     });
 

@@ -44,7 +44,7 @@ const dict = {
     'auth.loginTitle': 'Masuk',
     'auth.loginSubtitle': 'Masuk untuk memesan fasilitas dan melacak tiket.',
     'auth.registerTitle': 'Daftar',
-    'auth.registerSubtitle': 'Buat akun untuk mulai memakai layanan Dispora.',
+    'auth.registerSubtitle': 'Buat akun untuk mulai memakai layanan GJB Jakbar.',
     'auth.name': 'Nama lengkap',
     'auth.email': 'Email',
     'auth.phone': 'Nomor HP',

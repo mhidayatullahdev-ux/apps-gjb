@@ -145,7 +145,7 @@ export default function TransactionsScreen({ navigation }) {
       const res = await bookingsApi.detail(item.id);
       navigation.navigate('Payment', {
         order: {
-          item: `${item.court?.facility?.name} - ${item.court?.name}`,
+          item: `${item.court?.facility?.name || ''} - ${item.court?.name || ''}`.replace(/^ - $/, '-'),
           amount: item.total_amount,
           detail: `${item.purpose} · ${item.booking_date} · ${item.start_time}-${item.end_time}`,
           bookingCode: item.booking_code,
@@ -156,7 +156,7 @@ export default function TransactionsScreen({ navigation }) {
     } catch (e) {
       navigation.navigate('Payment', {
         order: {
-          item: `${item.court?.facility?.name} - ${item.court?.name}`,
+          item: `${item.court?.facility?.name || ''} - ${item.court?.name || ''}`.replace(/^ - $/, '-'),
           amount: item.total_amount,
           detail: `${item.purpose} · ${item.booking_date} · ${item.start_time}-${item.end_time}`,
           bookingCode: item.booking_code,

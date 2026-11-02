@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {View, Text, ScrollView, Pressable, Alert, Linking, ActivityIndicator, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +15,7 @@ import SmartImage from '../components/SmartImage';
 import haptic from '../utils/haptics';
 import { formatDateLocal, getTomorrowLocal } from '../utils/dateLocal';
 import analytics from '../utils/analytics';
+import { usePolling } from '../hooks/usePolling';
 
 // Group consecutive slots → ranges
 function groupRanges(slots) {
@@ -91,41 +92,35 @@ export default function FacilityDetailScreen({ route, navigation }) {
     })();
   }, [facilityId]);
 
+  // Reset slot saat tanggal/fasilitas/mode berubah
   useEffect(() => {
-    if (isCompetition) return;
-    if (!selectedDate || !facilityId) return;
-
-    // ✅ Cancelled guard — hindari race condition
-    let cancelled = false;
-
-    (async () => {
-      setAvailabilityLoading(true);
-      try {
-        const dateStr = formatDateLocal(selectedDate);
-        console.log('[Availability] Fetch:', facilityId, dateStr);
-
-        const res = await facilitiesApi.availability(facilityId, dateStr);
-
-        if (cancelled) {
-          console.log('[Availability] Ignored stale:', dateStr);
-          return;
-        }
-
-        setCourtsAvailability(res.courts || []);
-        setSelectedSlotsByCourt({});
-      } catch (e) {
-        if (cancelled) return;
-        console.warn('[FacilityDetail] Availability error:', e.message);
-        setCourtsAvailability([]);
-      } finally {
-        if (!cancelled) setAvailabilityLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    setSelectedSlotsByCourt({});
   }, [selectedDate, facilityId, isCompetition]);
+
+  // Fetch awal + re-fetch saat tanggal berubah (dengan loading spinner)
+  useEffect(() => {
+    if (isCompetition || !selectedDate || !facilityId) return;
+
+    let cancelled = false;
+    setAvailabilityLoading(true);
+
+    facilitiesApi.availability(facilityId, formatDateLocal(selectedDate))
+      .then((res) => { if (!cancelled) setCourtsAvailability(res.courts || []); })
+      .catch((e) => { if (!cancelled) { console.warn('[Availability]', e.message); setCourtsAvailability([]); } })
+      .finally(() => { if (!cancelled) setAvailabilityLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [selectedDate, facilityId, isCompetition]);
+
+  // Silent polling 30 detik — berhenti otomatis saat layar tidak fokus atau app di-background
+  const pollAvailability = useCallback(() => {
+    if (!selectedDate || !facilityId) return;
+    facilitiesApi.availability(facilityId, formatDateLocal(selectedDate))
+      .then((res) => setCourtsAvailability(res.courts || []))
+      .catch(() => {});
+  }, [facilityId, selectedDate]);
+
+  usePolling(pollAvailability, 30000, !isCompetition && !!selectedDate && !!facilityId);
 
   useEffect(() => {
     if (isCompetition) {
@@ -179,15 +174,50 @@ export default function FacilityDetailScreen({ route, navigation }) {
     }
   };
 
-  const nextDays = (count) => {
-    const out = [];
-    const now = new Date();
-    // i = 0 artinya mulai dari HARI INI
-    for (let i = 0; i < count; i++) {
-      out.push(new Date(now.getFullYear(), now.getMonth(), now.getDate() + i));
+  // Hitung max tanggal booking dari CMS:
+  // Prioritas 1: max_booking_date (sudah dihitung backend berdasarkan rolling window)
+  // Fallback: window_value + window_unit dihitung manual
+  const bookingMaxDate = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const raw = settings.booking?.max_booking_date;
+    if (raw) {
+      const [y, m, d] = raw.split('-').map(Number);
+      const maxDate = new Date(y, m - 1, d, 0, 0, 0, 0);
+      if (!isNaN(maxDate.getTime()) && maxDate >= today) return maxDate;
     }
-    return out;
-  };
+
+    // Fallback dari window_value + window_unit
+    const wv = Number(settings.booking?.window_value) || 7;
+    const wu = settings.booking?.window_unit || 'day';
+    const fallback = new Date(today);
+    if (wu === 'week') fallback.setDate(fallback.getDate() + wv * 7);
+    else if (wu === 'month') fallback.setMonth(fallback.getMonth() + wv);
+    else fallback.setDate(fallback.getDate() + wv);
+    return fallback;
+  }, [settings.booking]);
+
+  // Semua tanggal yang bisa dipilih (hari ini s/d max)
+  const bookingDates = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const days = [];
+    const cur = new Date(today);
+    while (cur <= bookingMaxDate) {
+      days.push(new Date(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+    return days;
+  }, [bookingMaxDate]);
+
+  // Cek apakah tanggal masuk closure period dari CMS
+  const isClosureDate = useCallback((date) => {
+    const periods = settings.closure?.periods || [];
+    if (periods.length === 0) return false;
+    const dateStr = formatDateLocal(date);
+    return periods.some((p) => p.start <= dateStr && dateStr <= p.end);
+  }, [settings.closure]);
 
   const toggleSlot = (courtId, slot) => {
     if (!slot.available) return;
@@ -435,25 +465,31 @@ export default function FacilityDetailScreen({ route, navigation }) {
           : (isEn ? 'PICK A DATE' : 'PILIH TANGGAL')}
       </Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: spacing.lg }}>
-        {nextDays(14).map((d) => {
+        {bookingDates.map((d) => {
           const active = selectedDate && d.toDateString() === selectedDate.toDateString();
+          const closed = isClosureDate(d);
           return (
             <Pressable
               key={d.toISOString()}
+              disabled={closed}
               onPress={() => {
+                if (closed) return;
                 haptic.selection();
                 setSelectedDate(d);
                 if (endDate && endDate <= d) setEndDate(null);
               }}
-              style={[s.dateCell, active && s.dateCellActive]}
+              style={[s.dateCell, active && s.dateCellActive, closed && s.dateCellClosed]}
             >
-              <Text style={[s.dateDow, active && { color: colors.onPrimary }]}>
+              <Text style={[s.dateDow, active && { color: colors.onPrimary }, closed && s.dateCellClosedText]}>
                 {d.toLocaleDateString('id-ID', { weekday: 'short' })}
               </Text>
-              <Text style={[s.dateNum, active && { color: colors.onPrimary }]}>{d.getDate()}</Text>
-              <Text style={[s.dateMon, active && { color: colors.onPrimary }]}>
+              <Text style={[s.dateNum, active && { color: colors.onPrimary }, closed && s.dateCellClosedText]}>{d.getDate()}</Text>
+              <Text style={[s.dateMon, active && { color: colors.onPrimary }, closed && s.dateCellClosedText]}>
                 {d.toLocaleDateString('id-ID', { month: 'short' })}
               </Text>
+              {closed ? (
+                <Text style={s.dateCellClosedLabel}>Tutup</Text>
+              ) : null}
             </Pressable>
           );
         })}
@@ -484,21 +520,30 @@ export default function FacilityDetailScreen({ route, navigation }) {
             {isEn ? 'END DATE' : 'TANGGAL SELESAI'}
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: spacing.lg }}>
-            {nextDays(30).filter((d) => d > selectedDate).map((d) => {
+            {bookingDates.filter((d) => d > selectedDate).map((d) => {
               const active = endDate && endDate.toDateString() === d.toDateString();
+              const closed = isClosureDate(d);
               return (
                 <Pressable
                   key={d.toISOString()}
-                  onPress={() => { haptic.selection(); setEndDate(d); }}
-                  style={[s.dateCell, active && s.dateCellActive]}
+                  disabled={closed}
+                  onPress={() => {
+                    if (closed) return;
+                    haptic.selection();
+                    setEndDate(d);
+                  }}
+                  style={[s.dateCell, active && s.dateCellActive, closed && s.dateCellClosed]}
                 >
-                  <Text style={[s.dateDow, active && { color: colors.onPrimary }]}>
+                  <Text style={[s.dateDow, active && { color: colors.onPrimary }, closed && s.dateCellClosedText]}>
                     {d.toLocaleDateString('id-ID', { weekday: 'short' })}
                   </Text>
-                  <Text style={[s.dateNum, active && { color: colors.onPrimary }]}>{d.getDate()}</Text>
-                  <Text style={[s.dateMon, active && { color: colors.onPrimary }]}>
+                  <Text style={[s.dateNum, active && { color: colors.onPrimary }, closed && s.dateCellClosedText]}>{d.getDate()}</Text>
+                  <Text style={[s.dateMon, active && { color: colors.onPrimary }, closed && s.dateCellClosedText]}>
                     {d.toLocaleDateString('id-ID', { month: 'short' })}
                   </Text>
+                  {closed ? (
+                    <Text style={s.dateCellClosedLabel}>Tutup</Text>
+                  ) : null}
                 </Pressable>
               );
             })}
@@ -861,6 +906,9 @@ const makeStyles = (c, t) => ({
   sportChipTextActive: { color: c.onPrimary, fontWeight: '800' },
   dateCell: { width: 58, paddingVertical: spacing.md, alignItems: 'center', borderRadius: radius.md, borderWidth: 1, borderColor: c.line, backgroundColor: c.base },
   dateCellActive: { backgroundColor: c.primary, borderColor: c.primary },
+  dateCellClosed: { backgroundColor: c.surfaceAlt, borderColor: c.line, opacity: 0.5 },
+  dateCellClosedText: { textDecorationLine: 'line-through', color: c.textFaint },
+  dateCellClosedLabel: { fontSize: 8, color: c.textFaint, fontWeight: '700', marginTop: 1 },
   dateDow: { ...t.small, fontSize: 10, textTransform: 'uppercase' },
   dateNum: { color: c.text, fontSize: 18, fontWeight: '900' },
   dateMon: { ...t.small, fontSize: 10 },

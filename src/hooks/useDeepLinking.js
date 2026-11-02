@@ -14,6 +14,22 @@ export function setNavigationRef(ref) {
   }
 }
 
+export function navigateTo(name, params) {
+  try {
+    if (navigationRef?.isReady?.()) {
+      navigationRef.reset({ index: 0, routes: [{ name: 'Tabs' }, { name, params }] });
+    }
+  } catch {}
+}
+
+export function navigateToLogin() {
+  try {
+    if (navigationRef?.isReady?.()) {
+      navigationRef.reset({ index: 0, routes: [{ name: 'Login' }] });
+    }
+  } catch {}
+}
+
 function handleDeepLink(url, navRef) {
   if (!url) return;
   console.log('[DeepLink] Received:', url);
