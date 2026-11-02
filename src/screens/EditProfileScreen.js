@@ -54,6 +54,7 @@ export default function EditProfileScreen({ navigation }) {
       quality: 0.7,
       allowsEditing: true,
       aspect: [1, 1],
+      copyToCacheDirectory: true,
     });
     if (!res.canceled && res.assets?.[0]) {
       setAvatar(res.assets[0]);
@@ -162,7 +163,7 @@ export default function EditProfileScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       style={s.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         {/* Avatar */}

@@ -63,7 +63,7 @@ export default function ResetPasswordScreen({ navigation, route }) {
   return (
     <KeyboardAvoidingView
       style={s.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <View style={s.iconWrap}>

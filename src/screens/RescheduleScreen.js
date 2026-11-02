@@ -115,7 +115,7 @@ export default function RescheduleScreen({ route, navigation }) {
   }
 
   return (
-    <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         {/* Info booking saat ini */}
         <View style={s.card}>

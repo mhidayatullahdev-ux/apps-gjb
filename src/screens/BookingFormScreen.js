@@ -79,6 +79,7 @@ export default function BookingFormScreen({ route, navigation }) {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
       allowsEditing: true,
+      copyToCacheDirectory: true,
     });
     if (!res.canceled && res.assets?.[0]) setKtp(res.assets[0]);
   };
@@ -242,7 +243,7 @@ export default function BookingFormScreen({ route, navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <View style={s.card}>
           <Text style={s.label}>{isEn ? 'Facility' : 'Fasilitas'}</Text>
