@@ -585,8 +585,8 @@ export default function FacilityDetailScreen({ route, navigation }) {
           </Text>
           <Text style={[s.hint, { paddingHorizontal: spacing.lg, marginBottom: spacing.sm }]}>
             {isEn
-              ? 'Tap to select 1 slot.'
-              : 'Tap untuk pilih 1 slot.'}
+              ? 'Tap to select 1 slot (2 hours).'
+              : 'Tap untuk pilih 1 slot (2 jam).'}
           </Text>
 
           {availabilityLoading ? (

@@ -85,9 +85,11 @@ export default function BookingFormScreen({ route, navigation }) {
   };
 
   const buildFarDateMessage = () => {
+    const timeSlots = (ranges || []).map(r => `${r.start} - ${r.end}`).join(', ') || '-';
+    const dateFormatted = dateObj.toLocaleDateString(isEn ? 'en-GB' : 'id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     return isEn
-      ? `Hello GJB Helpdesk,\n\nI want to book for a date more than 1 day ahead:\n\n• Facility: ${court?.facility?.name || facility?.name || '-'}\n• Court: ${court?.name || '-'}\n• Purpose: ${purpose}\n• Sport: ${sportLabel}\n• Booking Date: ${dateObj.toISOString().slice(0, 10)}\n• Name: ${user?.name || '-'}\n\nPlease assist.`
-      : `Halo Helpdesk GJB,\n\nSaya ingin booking untuk tanggal lebih dari 1 hari ke depan:\n\n• Fasilitas: ${court?.facility?.name || facility?.name || '-'}\n• Lapangan: ${court?.name || '-'}\n• Tujuan: ${purpose}\n• Cabor: ${sportLabel}\n• Tanggal Booking: ${dateObj.toISOString().slice(0, 10)}\n• Nama: ${user?.name || '-'}\n\nMohon dibantu. Terima kasih.`;
+      ? `Hello GJB Helpdesk,\n\nI want to book for a date more than 1 day ahead:\n\n• Facility: ${court?.facility?.name || facility?.name || '-'}\n• Court: ${court?.name || '-'}\n• Sport: ${sportLabel}\n• Purpose: ${purpose}\n• Date: ${dateFormatted}\n• Session: ${timeSlots}\n• Price: Rp ${Number(totalPrice || 0).toLocaleString('id-ID')}\n• Name: ${user?.name || '-'}\n\nPlease assist.`
+      : `Halo Helpdesk GJB,\n\nSaya ingin booking untuk tanggal lebih dari 1 hari ke depan:\n\n• Fasilitas: ${court?.facility?.name || facility?.name || '-'}\n• Lapangan: ${court?.name || '-'}\n• Cabor: ${sportLabel}\n• Tujuan: ${purpose}\n• Tanggal: ${dateFormatted}\n• Jam Sesi: ${timeSlots}\n• Harga: Rp ${Number(totalPrice || 0).toLocaleString('id-ID')}\n• Nama: ${user?.name || '-'}\n\nMohon dibantu. Terima kasih.`;
   };
 
   const goToHelpdeskDate = () => {

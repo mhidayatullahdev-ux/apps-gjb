@@ -258,8 +258,8 @@ export default function PaymentScreen({ route, navigation }) {
   };
 
   const helpdeskMessage = isEn
-    ? `Hello GJB Helpdesk,\n\nI want to confirm my booking:\n\n• Item: ${order.item}\n• Amount: Rp ${displayAmount.toLocaleString('id-ID')}\n• Booking Code: ${bookingCode}\n• Name: ${user?.name || '-'}\n\nPlease assist.`
-    : `Halo Helpdesk GJB,\n\nSaya ingin konfirmasi booking:\n\n• Item: ${order.item}\n• Jumlah: Rp ${displayAmount.toLocaleString('id-ID')}\n• Kode Booking: ${bookingCode}\n• Nama: ${user?.name || '-'}\n\nMohon dibantu. Terima kasih.`;
+    ? `Hello GJB Helpdesk,\n\nI want to confirm my booking:\n\n• Item: ${order.item}\n• Date: ${booking?.booking_date ? new Date(booking.booking_date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '-'}\n• Session: ${booking?.start_time && booking?.end_time ? `${booking.start_time} - ${booking.end_time}` : '-'}\n• Amount: Rp ${displayAmount.toLocaleString('id-ID')}\n• Booking Code: ${bookingCode}\n• Name: ${user?.name || '-'}\n\nPlease assist.`
+    : `Halo Helpdesk GJB,\n\nSaya ingin konfirmasi booking:\n\n• Item: ${order.item}\n• Tanggal: ${booking?.booking_date ? new Date(booking.booking_date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '-'}\n• Jam Sesi: ${booking?.start_time && booking?.end_time ? `${booking.start_time} - ${booking.end_time}` : '-'}\n• Jumlah: Rp ${displayAmount.toLocaleString('id-ID')}\n• Kode Booking: ${bookingCode}\n• Nama: ${user?.name || '-'}\n\nMohon dibantu. Terima kasih.`;
 
   // ✅ Pakai WA fasilitas (dari booking), fallback ke global settings
   const facilityWaBase = (() => {
