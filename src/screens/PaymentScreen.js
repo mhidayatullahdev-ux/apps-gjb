@@ -484,6 +484,28 @@ export default function PaymentScreen({ route, navigation }) {
         <Row label="Item" value={order.item} s={s} />
         <Divider />
 
+        {booking?.booking_date ? (
+          <>
+            <Row
+              label={isEn ? 'Date' : 'Tanggal'}
+              value={new Date(booking.booking_date).toLocaleDateString(isEn ? 'en-GB' : 'id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              s={s}
+            />
+            <Divider />
+          </>
+        ) : null}
+
+        {booking?.start_time && booking?.end_time ? (
+          <>
+            <Row
+              label={isEn ? 'Session' : 'Jam Sesi'}
+              value={`${booking.start_time} - ${booking.end_time}`}
+              s={s}
+            />
+            <Divider />
+          </>
+        ) : null}
+
         <Row
           label={isEn ? 'Amount' : 'Jumlah'}
           value={`Rp ${displayAmount.toLocaleString('id-ID')}`}
