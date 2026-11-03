@@ -140,7 +140,7 @@ const makeStyles = (c, t) => ({
   screen: { flex: 1, backgroundColor: 'transparent' },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl * 2, gap: spacing.md },
   title: { ...t.display, fontSize: 28, marginTop: spacing.lg },
-  subtitle: { ...t.body, marginBottom: spacing.sm },
+  subtitle: { ...t.body, fontSize: 13, marginBottom: spacing.sm },
   field: { gap: 6 },
   label: { ...t.small, fontSize: 12, color: c.textMuted, fontWeight: '700' },
   inputBox: {
